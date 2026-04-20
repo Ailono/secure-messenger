@@ -78,6 +78,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
 .bubble.mine{align-self:flex-end;background:#2b5278;border-bottom-right-radius:4px}
 .bubble.theirs{align-self:flex-start;background:#1e2d3d;border-bottom-left-radius:4px}
 .bubble .time{font-size:10px;color:#666;text-align:right;margin-top:4px}
+.msg-status{margin-left:4px;color:#888;font-size:11px}
 .sys-msg{text-align:center;font-size:12px;color:#555;padding:4px 0}
 #input-area{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2d3d;border-top:1px solid #2a3a50;flex-shrink:0}
 #msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:auto}
@@ -163,6 +164,7 @@ let chats = {};
 let unread = {};
 let onlineUsers = [];
 let allUsers = [];
+let msgStatus = {}; // id -> 'sent'|'delivered'|'read'
 
 // ── Crypto ────────────────────────────────────────────────────────────────────
 function initCrypto() {
@@ -387,7 +389,6 @@ function renderConversations(convs, online) {
 // ── Online updates ────────────────────────────────────────────────────────────
 function onPacket(pkt) {
   if (pkt.type==='ack') {
-    // refresh lists after successful (re)connect
     loadPeople();
     loadConversations();
   }
@@ -398,7 +399,18 @@ function onPacket(pkt) {
   }
   else if (pkt.type==='key_exchange') onKeyExchange(pkt);
   else if (pkt.type==='message')      onMessage(pkt);
-  else if (pkt.type==='error')        addSys('⚠️ '+pkt.msg);
+  else if (pkt.type==='status') {
+    msgStatus[pkt.id] = pkt.status;
+    _updateStatusBubble(pkt.id, pkt.status);
+  }
+  else if (pkt.type==='status_bulk') {
+    // All our messages to this peer were read
+    document.querySelectorAll(`.bubble.mine[data-peer="${escHtml(pkt.from)}"]`).forEach(el => {
+      const id = el.dataset.msgid;
+      if (id) { msgStatus[id] = 'read'; _updateStatusBubble(id, 'read'); }
+    });
+  }
+  else if (pkt.type==='error') addSys('⚠️ '+pkt.msg);
 }
 
 // ── Open chat ─────────────────────────────────────────────────────────────────
@@ -421,6 +433,10 @@ async function openChat(peer) {
   if (!keySent[peer]) {
     keySent[peer] = true;
     ws.send(JSON.stringify({type:'key_exchange', to:peer, pubkey:exportPub()}));
+  }
+  // Tell peer we've read their messages
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type:'read', peer}));
   }
   if (peerPubKeys[peer]) { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
   else setStatus('🔑 Обмен ключами...', false);
@@ -498,8 +514,13 @@ function onMessage(pkt) {
     const ts = Date.now()/1000;
     if (!chats[peer]) chats[peer]=[];
     chats[peer].push({sender:peer, text, ts});
-    if (peer===currentPeer) _addBubble(peer, text, ts);
-    else { unread[peer]=(unread[peer]||0)+1; }
+    if (peer===currentPeer) {
+      _addBubble(peer, text, ts);
+      // Tell sender we read it
+      ws.send(JSON.stringify({type:'read', peer}));
+    } else {
+      unread[peer]=(unread[peer]||0)+1;
+    }
     loadConversations();
   } catch(e) { addSys('❌ Ошибка расшифровки'); }
 }
@@ -508,14 +529,15 @@ function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text||!currentPeer) return;
-  if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
+  if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован — дождитесь когда собеседник зайдёт онлайн'); return; }
   if (!ws || ws.readyState !== WebSocket.OPEN) { addSys('⚠️ Нет соединения, переподключение...'); return; }
   const data = encryptMsg(text, peerPubKeys[currentPeer]);
-  ws.send(JSON.stringify({type:'message', to:currentPeer, data}));
+  const tmpId = 'tmp_' + Date.now();
+  ws.send(JSON.stringify({type:'message', to:currentPeer, data, tmp_id: tmpId}));
   const ts = Date.now()/1000;
   if (!chats[currentPeer]) chats[currentPeer]=[];
   chats[currentPeer].push({sender:username, text, ts});
-  _addBubble(username, text, ts);
+  _addBubble(username, text, ts, tmpId, currentPeer);
   input.value=''; input.style.height='auto';
   loadConversations();
 }
@@ -526,15 +548,24 @@ function setStatus(text, secure) {
   el.textContent=text; el.className='status'+(secure?' secure':'');
 }
 
-function _addBubble(sender, text, ts) {
+function _addBubble(sender, text, ts, msgId, peer) {
   const msgs = document.getElementById('messages');
   const isMine = sender===username;
   const time = new Date(ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   const div = document.createElement('div');
   div.className='bubble '+(isMine?'mine':'theirs');
-  div.innerHTML=`${escHtml(text)}<div class="time">${time}</div>`;
+  if (msgId) { div.dataset.msgid=msgId; div.dataset.peer=peer||currentPeer||''; }
+  const statusHtml = isMine ? `<span class="msg-status" id="st_${msgId||''}">✓</span>` : '';
+  div.innerHTML=`${escHtml(text)}<div class="time">${time}${statusHtml}</div>`;
   msgs.appendChild(div);
   msgs.scrollTop=msgs.scrollHeight;
+}
+
+function _updateStatusBubble(id, status) {
+  const el = document.getElementById('st_'+id);
+  if (!el) return;
+  if (status==='delivered') el.textContent='✓✓';
+  else if (status==='read')  { el.textContent='✓✓'; el.style.color='#5b9bd5'; }
 }
 
 function addSys(text) {

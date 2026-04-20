@@ -6,12 +6,16 @@ Web relay server — secure by design:
   - Server only relays/stores encrypted blobs — plaintext never seen
   - Rate limiting on auth endpoints
   - Sender enforced server-side from JWT
+  - Offline message delivery on reconnect
+  - FCM push notifications for offline users
+  - Message status: sent / delivered / read
 """
 
 import asyncio, json, logging, pathlib, os, time, secrets
 import database
 import bcrypt
 import jwt
+import aiohttp
 from aiohttp import web
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [WEB] %(message)s')
@@ -22,6 +26,8 @@ WEB_DIR = pathlib.Path(__file__).parent / 'web'
 JWT_SECRET = os.environ.get('JWT_SECRET') or secrets.token_hex(32)
 JWT_ALG    = 'HS256'
 JWT_TTL    = 3600
+
+FCM_SERVER_KEY = os.environ.get('FCM_SERVER_KEY', '')
 
 _auth_attempts: dict = {}
 RATE_LIMIT  = 10
@@ -47,6 +53,36 @@ def _make_token(username: str) -> str:
 
 def _verify_token(token: str):
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])['sub']
+
+
+# ── FCM push ──────────────────────────────────────────────────────────────────
+
+async def _send_fcm(to_token: str, sender: str):
+    if not FCM_SERVER_KEY or not to_token:
+        return
+    payload = {
+        'to': to_token,
+        'notification': {
+            'title': sender,
+            'body': '🔒 Новое зашифрованное сообщение',
+            'sound': 'default',
+        },
+        'data': {'sender': sender},
+        'priority': 'high',
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                'https://fcm.googleapis.com/fcm/send',
+                json=payload,
+                headers={
+                    'Authorization': f'key={FCM_SERVER_KEY}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=aiohttp.ClientTimeout(total=5),
+            )
+    except Exception as e:
+        logging.warning(f'FCM error: {e}')
 
 
 # ── Auth endpoints ────────────────────────────────────────────────────────────
@@ -81,10 +117,9 @@ async def handle_login(request: web.Request):
     return web.json_response({'token': _make_token(username)})
 
 
-# ── REST: users & history ─────────────────────────────────────────────────────
+# ── REST ──────────────────────────────────────────────────────────────────────
 
 async def handle_users(request: web.Request):
-    """All registered users (for People tab)."""
     try:
         username = _verify_token(request.rel_url.query.get('token', ''))
     except Exception:
@@ -95,7 +130,6 @@ async def handle_users(request: web.Request):
 
 
 async def handle_conversations(request: web.Request):
-    """Chats tab — conversations this user has had."""
     try:
         username = _verify_token(request.rel_url.query.get('token', ''))
     except Exception:
@@ -106,13 +140,14 @@ async def handle_conversations(request: web.Request):
 
 
 async def handle_history(request: web.Request):
-    """Encrypted message history between two users."""
     try:
         username = _verify_token(request.rel_url.query.get('token', ''))
     except Exception:
         return web.json_response({'error': 'Unauthorized'}, status=401)
     peer = request.match_info['peer']
     messages = database.get_history(username, peer)
+    # Mark messages from peer as delivered when history is fetched
+    database.mark_delivered_bulk(peer, username)
     return web.json_response({'messages': messages})
 
 
@@ -123,6 +158,19 @@ async def handle_delete_conversation(request: web.Request):
         return web.json_response({'error': 'Unauthorized'}, status=401)
     peer = request.match_info['peer']
     database.delete_conversation(username, peer)
+    return web.json_response({'ok': True})
+
+
+async def handle_fcm_token(request: web.Request):
+    """Save FCM token for push notifications."""
+    try:
+        username = _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    body = await request.json()
+    fcm_token = body.get('fcm_token', '')
+    if fcm_token:
+        database.save_fcm_token(username, fcm_token)
     return web.json_response({'ok': True})
 
 
@@ -162,14 +210,39 @@ async def websocket_handler(request: web.Request):
             ptype = packet.get('type')
             packet['from'] = username  # enforce sender
 
-            if ptype in ('key_exchange', 'key_ratchet', 'message'):
+            if ptype in ('key_exchange', 'key_ratchet'):
                 to = packet.get('to')
                 if to and to in clients:
-                    if ptype == 'message':
-                        database.store_message(username, to, packet.get('data', ''))
                     await clients[to].send_str(json.dumps(packet))
+
+            elif ptype == 'message':
+                to = packet.get('to')
+                if not to:
+                    continue
+                msg_id = database.store_message(username, to, packet.get('data', ''))
+                packet['id'] = msg_id
+                # Confirm to sender: message stored
+                await ws.send_str(json.dumps({'type': 'status', 'id': msg_id, 'status': 'sent'}))
+                if to in clients:
+                    # Peer online — deliver immediately
+                    await clients[to].send_str(json.dumps(packet))
+                    database.mark_delivered(msg_id)
+                    await ws.send_str(json.dumps({'type': 'status', 'id': msg_id, 'status': 'delivered'}))
                 else:
-                    await ws.send_str(json.dumps({'type': 'error', 'msg': f'{to} offline'}))
+                    # Peer offline — send FCM push
+                    fcm_token = database.get_fcm_token(to)
+                    if fcm_token:
+                        asyncio.create_task(_send_fcm(fcm_token, username))
+
+            elif ptype == 'read':
+                # Recipient tells sender their messages were read
+                peer = packet.get('peer')
+                if peer:
+                    database.mark_read(peer, username)
+                    if peer in clients:
+                        await clients[peer].send_str(json.dumps({
+                            'type': 'status_bulk', 'from': username, 'status': 'read'
+                        }))
 
     except Exception as e:
         logging.error(f'WS error ({username}): {e}')
@@ -193,15 +266,16 @@ async def index(request):
 database.init_db()
 
 app = web.Application()
-app.router.add_get('/',                    index)
-app.router.add_post('/register',           handle_register)
-app.router.add_post('/login',              handle_login)
-app.router.add_get('/users',               handle_users)
-app.router.add_get('/conversations',       handle_conversations)
-app.router.add_get('/history/{peer}',      handle_history)
+app.router.add_get('/',                       index)
+app.router.add_post('/register',              handle_register)
+app.router.add_post('/login',                 handle_login)
+app.router.add_get('/users',                  handle_users)
+app.router.add_get('/conversations',          handle_conversations)
+app.router.add_get('/history/{peer}',         handle_history)
 app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
-app.router.add_get('/ws',                  websocket_handler)
-app.router.add_static('/web',              WEB_DIR)
+app.router.add_post('/fcm_token',             handle_fcm_token)
+app.router.add_get('/ws',                     websocket_handler)
+app.router.add_static('/web',                 WEB_DIR)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
