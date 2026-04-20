@@ -140,10 +140,11 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
 // ── State ─────────────────────────────────────────────────────────────────────
 let ws, username, currentPeer;
 let myKeyPair = null;
-let keySent = {};        // peer -> bool
-let sessionKeys = {};    // peer -> Uint8Array (their public key)
-let chats = {};          // peer -> [{sender, text, ts}]
-let unread = {};         // peer -> count
+let keySent = {};
+let sessionKeys = {};
+let chats = {};
+let unread = {};
+let onlineUsers = [];
 
 // ── Crypto ────────────────────────────────────────────────────────────────────
 function initCrypto() { myKeyPair = nacl.box.keyPair(); }
@@ -194,7 +195,7 @@ function onPacket(pkt) {
     document.getElementById('app').classList.add('show');
     document.getElementById('my-name-label').textContent = '🔵 ' + username;
   }
-  else if (pkt.type === 'users') renderUsers(pkt.users);
+  else if (pkt.type === 'users') { onlineUsers = pkt.users; renderUsers(onlineUsers); }
   else if (pkt.type === 'key_exchange') onKeyExchange(pkt);
   else if (pkt.type === 'message') onMessage(pkt);
   else if (pkt.type === 'error') addSys(pkt.msg);
@@ -203,20 +204,20 @@ function onPacket(pkt) {
 // ── Users list ────────────────────────────────────────────────────────────────
 function renderUsers(users) {
   const list = document.getElementById('users-list');
-  const noUsers = document.getElementById('no-users');
+  if (!list) return;
+  list.innerHTML = '';
 
   if (users.length === 0) {
-    list.innerHTML = '';
-    list.appendChild(noUsers);
-    noUsers.style.display = 'block';
+    const div = document.createElement('div');
+    div.id = 'no-users';
+    div.textContent = 'Нет пользователей онлайн';
+    list.appendChild(div);
     return;
   }
-  noUsers.style.display = 'none';
-  list.innerHTML = '';
 
   users.forEach(peer => {
     const lastMsg = chats[peer] ? chats[peer][chats[peer].length - 1] : null;
-    const badge = unread[peer] ? `<span class="user-badge">${unread[peer]}</span>` : '';
+    const badge = (unread[peer] || 0) > 0 ? `<span class="user-badge">${unread[peer]}</span>` : '';
     const div = document.createElement('div');
     div.className = 'user-item' + (peer === currentPeer ? ' active' : '');
     div.innerHTML = `
@@ -253,11 +254,13 @@ function openChat(peer) {
   // Key exchange if not done
   if (!sessionKeys[peer]) {
     setStatus('🔑 Обмен ключами...', false);
-    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
-    keySent[peer] = true;
-  } else {
-    setStatus('🔒 Зашифровано (E2E)', true);
   }
+  // Always send our key when opening chat
+  if (!keySent[peer]) {
+    keySent[peer] = true;
+    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
+  }
+  if (sessionKeys[peer]) setStatus('🔒 Зашифровано (E2E)', true);
 
   // Update sidebar active state
   document.querySelectorAll('.user-item').forEach(el => {
@@ -304,9 +307,7 @@ function onMessage(pkt) {
     } else {
       unread[peer] = (unread[peer] || 0) + 1;
     }
-    // Refresh sidebar
-    const users = Array.from(document.querySelectorAll('.user-name')).map(el => el.textContent);
-    renderUsers(users);
+    renderUsers(onlineUsers);
   } catch(e) { console.error('decrypt error', e); }
 }
 
