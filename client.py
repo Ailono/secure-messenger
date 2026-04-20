@@ -246,7 +246,13 @@ class MainWindow(QMainWindow):
     def _load_history(self):
         database.init_db()
         for msg in database.get_history(self.username, self.recipient):
-            self._add_bubble(msg['sender'], msg['text'], msg['ts'])
+            # History stores ciphertext — decrypt on load if session key available
+            if self.session_key:
+                try:
+                    text = crypto_utils.decrypt(bytes.fromhex(msg['ciphertext']), self.session_key)
+                    self._add_bubble(msg['sender'], text, msg['ts'])
+                except Exception:
+                    pass  # Skip undecryptable (different session key)
 
     def _send_packet(self, packet: dict):
         try:
@@ -262,16 +268,18 @@ class MainWindow(QMainWindow):
             return
 
         encrypted = crypto_utils.encrypt(text, self.session_key)
+        ciphertext_hex = encrypted.hex()
         self._send_packet({
             'type': 'message',
             'from': self.username,
             'to': self.recipient,
-            'data': encrypted.hex()
+            'data': ciphertext_hex
         })
 
         ts = time.time()
         self._add_bubble(self.username, text, ts)
-        database.store_message(self.username, self.recipient, text)
+        # Store only the encrypted blob — plaintext never written to disk
+        database.store_message(self.username, self.recipient, ciphertext_hex)
         self.input.clear()
 
     def on_packet(self, packet: dict):
@@ -294,7 +302,8 @@ class MainWindow(QMainWindow):
                 text = crypto_utils.decrypt(bytes.fromhex(packet['data']), self.session_key)
                 ts = time.time()
                 self._add_bubble(packet['from'], text, ts)
-                database.store_message(packet['from'], self.username, text)
+                # Store only the encrypted blob
+                database.store_message(packet['from'], self.username, packet['data'])
             except Exception as e:
                 logging.error(f"Decrypt error: {e}")
 

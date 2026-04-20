@@ -14,14 +14,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; color: #e0e0e0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
-/* ── Login ── */
-#login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; padding: 24px; }
-#login-screen h1 { color: #5b9bd5; font-size: 24px; margin-bottom: 8px; }
-#login-screen input { width: 100%; max-width: 320px; padding: 13px 16px; background: #1e2d3d; border: 1px solid #2a3a50; border-radius: 10px; color: #e0e0e0; font-size: 15px; outline: none; }
-#login-screen input:focus { border-color: #5b9bd5; }
-#login-screen button { width: 100%; max-width: 320px; padding: 13px; background: #2b5278; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; }
-#login-screen button:active { background: #1e3d5c; }
-#login-error { color: #f44336; font-size: 13px; min-height: 18px; }
+/* ── Auth screen ── */
+#auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; padding: 24px; }
+#auth-screen h1 { color: #5b9bd5; font-size: 24px; margin-bottom: 4px; }
+#auth-screen input { width: 100%; max-width: 320px; padding: 13px 16px; background: #1e2d3d; border: 1px solid #2a3a50; border-radius: 10px; color: #e0e0e0; font-size: 15px; outline: none; }
+#auth-screen input:focus { border-color: #5b9bd5; }
+#auth-screen input[type=password] { letter-spacing: 2px; }
+.auth-btns { display: flex; gap: 8px; width: 100%; max-width: 320px; }
+.auth-btns button { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; }
+#btn-login    { background: #2b5278; color: white; }
+#btn-register { background: #1e3d5c; color: #aac; }
+.auth-btns button:active { opacity: 0.8; }
+#auth-error { color: #f44336; font-size: 13px; min-height: 18px; }
+#auth-hint  { color: #555; font-size: 12px; text-align: center; max-width: 320px; }
 
 /* ── App layout ── */
 #app { display: none; flex: 1; overflow: hidden; }
@@ -44,7 +49,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
 .user-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-last { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .user-badge { background: #5b9bd5; color: white; border-radius: 10px; font-size: 11px; padding: 2px 6px; flex-shrink: 0; }
-#no-users { padding: 24px 16px; text-align: center; color: #555; font-size: 13px; }
 
 /* ── Chat area ── */
 #chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -52,32 +56,28 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
 #empty-state .icon { font-size: 64px; }
 #chat-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
 #chat-view.show { display: flex; }
-
 #chat-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #1e2d3d; border-bottom: 1px solid #2a3a50; flex-shrink: 0; }
 #chat-header .avatar { width: 38px; height: 38px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 #chat-header .info { flex: 1; }
 #chat-header .name { font-weight: 600; font-size: 15px; }
 #chat-header .status { font-size: 11px; color: #f0a500; }
 #chat-header .status.secure { color: #4caf50; }
-
+#fingerprint-bar { font-size: 10px; color: #555; padding: 2px 0 0 0; font-family: monospace; cursor: pointer; }
+#fingerprint-bar:hover { color: #5b9bd5; }
 #messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 #messages::-webkit-scrollbar { width: 4px; }
 #messages::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
-
 .bubble { max-width: 72%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; word-break: break-word; }
 .bubble.mine { align-self: flex-end; background: #2b5278; border-bottom-right-radius: 4px; }
 .bubble.theirs { align-self: flex-start; background: #1e2d3d; border-bottom-left-radius: 4px; }
-.bubble .meta { font-size: 11px; color: #888; margin-bottom: 3px; }
 .bubble .time { font-size: 10px; color: #666; text-align: right; margin-top: 4px; }
 .sys-msg { text-align: center; font-size: 12px; color: #555; padding: 4px 0; }
-
 #input-area { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #1e2d3d; border-top: 1px solid #2a3a50; flex-shrink: 0; }
 #msg-input { flex: 1; padding: 10px 16px; background: #16212e; border: 1px solid #2a3a50; border-radius: 22px; color: #e0e0e0; font-size: 15px; outline: none; resize: none; max-height: 120px; overflow-y: auto; }
 #msg-input:focus { border-color: #5b9bd5; }
 #send-btn { width: 44px; height: 44px; background: #2b5278; border: none; border-radius: 50%; color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 #send-btn:active { background: #1e3d5c; }
 
-/* Mobile: hide sidebar when chat open */
 @media (max-width: 600px) {
   #sidebar { width: 100%; position: absolute; top: 0; left: 0; bottom: 0; z-index: 10; }
   #sidebar.hidden { display: none; }
@@ -85,37 +85,35 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
   #chat-header .back-btn { display: flex !important; }
 }
 .back-btn { display: none; background: none; border: none; color: #5b9bd5; font-size: 22px; cursor: pointer; padding: 0 8px 0 0; }
-
-#invite-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #2b5278; color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-#invite-toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <h1>💬 Secure Messenger</h1>
-  <input id="inp-server" placeholder="Адрес сервера">
-  <input id="inp-user" placeholder="Ваше имя">
-  <div id="login-error"></div>
-  <button onclick="connect()">Войти</button>
+<!-- ── Auth screen ── -->
+<div id="auth-screen">
+  <h1>🔒 Secure Messenger</h1>
+  <input id="inp-server" placeholder="Адрес сервера (host:port)">
+  <input id="inp-user"   placeholder="Имя пользователя">
+  <input id="inp-pass"   type="password" placeholder="Пароль (мин. 8 символов)">
+  <div id="auth-error"></div>
+  <div class="auth-btns">
+    <button id="btn-login"    onclick="doLogin()">Войти</button>
+    <button id="btn-register" onclick="doRegister()">Регистрация</button>
+  </div>
+  <div id="auth-hint">Пароль никогда не передаётся на сервер в открытом виде</div>
 </div>
 
+<!-- ── App ── -->
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
-      <div class="app-title">💬 Secure Messenger</div>
+      <div class="app-title">🔒 Secure Messenger</div>
       <div class="my-name" id="my-name-label"></div>
     </div>
-    <div id="users-list">
-      <div id="no-users">Нет пользователей онлайн</div>
-    </div>
+    <div id="users-list"><div style="padding:24px 16px;text-align:center;color:#555;font-size:13px">Нет пользователей онлайн</div></div>
   </div>
-
   <div id="chat-area">
-    <div id="empty-state">
-      <div class="icon">💬</div>
-      <div>Выберите собеседника</div>
-    </div>
+    <div id="empty-state"><div class="icon">💬</div><div>Выберите собеседника</div></div>
     <div id="chat-view">
       <div id="chat-header">
         <button class="back-btn" onclick="backToList()">←</button>
@@ -123,6 +121,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
         <div class="info">
           <div class="name" id="peer-name-label"></div>
           <div class="status" id="enc-status">Обмен ключами...</div>
+          <div id="fingerprint-bar" onclick="showFingerprint()" title="Нажмите для проверки fingerprint"></div>
         </div>
       </div>
       <div id="messages"></div>
@@ -134,21 +133,36 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
   </div>
 </div>
 
-<div id="invite-toast">Ссылка скопирована!</div>
-
 <script>
+'use strict';
+
 // ── State ─────────────────────────────────────────────────────────────────────
-let ws, username, currentPeer;
+let ws, username, authToken, currentPeer;
 let myKeyPair = null;
 let keySent = {};
-let sessionKeys = {};
+let peerPubKeys = {};   // peer -> Uint8Array public key
 let chats = {};
 let unread = {};
 let onlineUsers = [];
 
 // ── Crypto ────────────────────────────────────────────────────────────────────
-function initCrypto() { myKeyPair = nacl.box.keyPair(); }
-function exportPub() { return nacl.util.encodeBase64(myKeyPair.publicKey); }
+function initCrypto() {
+  myKeyPair = nacl.box.keyPair();
+}
+
+function exportPub() {
+  return nacl.util.encodeBase64(myKeyPair.publicKey);
+}
+
+// Fingerprint: SHA-256 of public key displayed as hex pairs
+async function keyFingerprint(pubKeyBytes) {
+  const buf = await crypto.subtle.digest('SHA-256', pubKeyBytes);
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join(':')
+    .toUpperCase()
+    .substring(0, 47); // first 16 bytes = 47 chars
+}
 
 function encryptMsg(text, theirPub) {
   const nonce = nacl.randomBytes(nacl.box.nonceLength);
@@ -163,92 +177,102 @@ function decryptMsg(b64, theirPub) {
   const nonce = data.slice(0, nacl.box.nonceLength);
   const ct = data.slice(nacl.box.nonceLength);
   const pt = nacl.box.open(ct, nonce, theirPub, myKeyPair.secretKey);
-  if (!pt) throw new Error('decrypt failed');
+  if (!pt) throw new Error('decrypt failed — possible tampering');
   return nacl.util.encodeUTF8(pt);
 }
 
-// ── Connect ───────────────────────────────────────────────────────────────────
-function connect() {
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getAuthFields() {
   const server = document.getElementById('inp-server').value.trim();
-  username = document.getElementById('inp-user').value.trim();
-  const err = document.getElementById('login-error');
-
-  if (!server || !username) { err.textContent = 'Заполните все поля'; return; }
-
-  initCrypto();
-  err.textContent = 'Подключение...';
-
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  try { ws = new WebSocket(`${proto}://${server}/ws`); } catch(e) { err.textContent = 'Неверный адрес'; return; }
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'register', username }));
-  };
-  ws.onmessage = (e) => onPacket(JSON.parse(e.data));
-  ws.onerror = () => { err.textContent = 'Ошибка подключения'; };
-  ws.onclose = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
+  const user   = document.getElementById('inp-user').value.trim();
+  const pass   = document.getElementById('inp-pass').value;
+  const err    = document.getElementById('auth-error');
+  if (!server || !user || !pass) { err.textContent = 'Заполните все поля'; return null; }
+  if (pass.length < 8) { err.textContent = 'Пароль минимум 8 символов'; return null; }
+  err.textContent = '';
+  return { server, user, pass };
 }
 
-function onPacket(pkt) {
-  if (pkt.type === 'ack') {
-    document.getElementById('login-screen').style.display = 'none';
+async function doRegister() {
+  const f = getAuthFields(); if (!f) return;
+  document.getElementById('auth-error').textContent = 'Регистрация...';
+  try {
+    const r = await fetch(`${location.protocol}//${f.server}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: f.user, password: f.pass })
+    });
+    const data = await r.json();
+    if (!r.ok) { document.getElementById('auth-error').textContent = data.error || 'Ошибка'; return; }
+    authToken = data.token;
+    username  = f.user;
+    initCrypto();
+    openApp(f.server);
+  } catch(e) { document.getElementById('auth-error').textContent = 'Ошибка соединения'; }
+}
+
+async function doLogin() {
+  const f = getAuthFields(); if (!f) return;
+  document.getElementById('auth-error').textContent = 'Вход...';
+  try {
+    const r = await fetch(`${location.protocol}//${f.server}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: f.user, password: f.pass })
+    });
+    const data = await r.json();
+    if (!r.ok) { document.getElementById('auth-error').textContent = data.error || 'Неверные данные'; return; }
+    authToken = data.token;
+    username  = f.user;
+    initCrypto();
+    openApp(f.server);
+  } catch(e) { document.getElementById('auth-error').textContent = 'Ошибка соединения'; }
+}
+
+// ── Connect WebSocket ─────────────────────────────────────────────────────────
+function openApp(server) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${server}/ws?token=${encodeURIComponent(authToken)}`);
+  ws.onopen    = () => {};
+  ws.onmessage = (e) => onPacket(JSON.parse(e.data));
+  ws.onerror   = () => { document.getElementById('auth-error').textContent = 'Ошибка WebSocket'; };
+  ws.onclose   = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
+  ws.onopen = () => {
+    document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.add('show');
     document.getElementById('my-name-label').textContent = '🔵 ' + username;
-  }
-  else if (pkt.type === 'users') { onlineUsers = pkt.users; renderUsers(onlineUsers); }
+  };
+}
+
+// ── Packets ───────────────────────────────────────────────────────────────────
+function onPacket(pkt) {
+  if (pkt.type === 'users')        { onlineUsers = pkt.users; renderUsers(onlineUsers); }
   else if (pkt.type === 'key_exchange') onKeyExchange(pkt);
-  else if (pkt.type === 'message') onMessage(pkt);
-  else if (pkt.type === 'error') addSys(pkt.msg);
+  else if (pkt.type === 'message')      onMessage(pkt);
+  else if (pkt.type === 'error')        addSys('⚠️ ' + pkt.msg);
 }
 
 // ── Users list ────────────────────────────────────────────────────────────────
 function renderUsers(users) {
   const list = document.getElementById('users-list');
-  if (!list) return;
   list.innerHTML = '';
-
-  if (!users || users.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.cssText = 'padding:24px 16px;text-align:center;color:#555;font-size:13px';
-    empty.textContent = 'Нет пользователей онлайн';
-    list.appendChild(empty);
+  if (!users || !users.length) {
+    list.innerHTML = '<div style="padding:24px 16px;text-align:center;color:#555;font-size:13px">Нет пользователей онлайн</div>';
     return;
   }
-
   users.forEach(peer => {
-    const lastMsg = chats[peer] && chats[peer].length ? chats[peer][chats[peer].length - 1] : null;
-
+    const lastMsg = chats[peer]?.at(-1);
     const item = document.createElement('div');
     item.className = 'user-item' + (peer === currentPeer ? ' active' : '');
     item.onclick = () => openChat(peer);
-
-    const avatar = document.createElement('div');
-    avatar.className = 'user-avatar';
-    avatar.textContent = peer[0].toUpperCase();
-
-    const info = document.createElement('div');
-    info.className = 'user-info';
-
-    const name = document.createElement('div');
-    name.className = 'user-name';
-    name.textContent = peer;
-
-    const last = document.createElement('div');
-    last.className = 'user-last';
-    last.textContent = lastMsg ? lastMsg.text.substring(0, 30) : 'Нажмите чтобы написать';
-
-    info.appendChild(name);
-    info.appendChild(last);
-    item.appendChild(avatar);
-    item.appendChild(info);
-
-    if (unread[peer] > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'user-badge';
-      badge.textContent = unread[peer];
-      item.appendChild(badge);
-    }
-
+    item.innerHTML = `
+      <div class="user-avatar">${escHtml(peer[0].toUpperCase())}</div>
+      <div class="user-info">
+        <div class="user-name">${escHtml(peer)}</div>
+        <div class="user-last">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : 'Нажмите чтобы написать'}</div>
+      </div>
+      ${(unread[peer]||0) > 0 ? `<span class="user-badge">${unread[peer]}</span>` : ''}
+    `;
     list.appendChild(item);
   });
 }
@@ -262,31 +286,28 @@ function openChat(peer) {
   document.getElementById('empty-state').style.display = 'none';
   document.getElementById('chat-view').classList.add('show');
   document.getElementById('peer-name-label').textContent = peer;
-
-  // Mobile: hide sidebar
   document.getElementById('sidebar').classList.add('hidden');
 
-  // Render history
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
   chats[peer].forEach(m => _addBubble(m.sender, m.text, m.ts));
 
-  // Key exchange if not done
-  if (!sessionKeys[peer]) {
-    setStatus('🔑 Обмен ключами...', false);
-  }
-  // Always send our key when opening chat
   if (!keySent[peer]) {
     keySent[peer] = true;
-    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
+    ws.send(JSON.stringify({ type: 'key_exchange', to: peer, pubkey: exportPub() }));
   }
-  if (sessionKeys[peer]) setStatus('🔒 Зашифровано (E2E)', true);
 
-  // Update sidebar active state
+  if (peerPubKeys[peer]) {
+    setStatus('🔒 Зашифровано (E2E)', true);
+    updateFingerprint(peer);
+  } else {
+    setStatus('🔑 Обмен ключами...', false);
+    document.getElementById('fingerprint-bar').textContent = '';
+  }
+
   document.querySelectorAll('.user-item').forEach(el => {
     el.classList.toggle('active', el.querySelector('.user-name')?.textContent === peer);
   });
-
   msgs.scrollTop = msgs.scrollHeight;
   document.getElementById('msg-input').focus();
 }
@@ -299,46 +320,63 @@ function backToList() {
 }
 
 // ── Key exchange ──────────────────────────────────────────────────────────────
-function onKeyExchange(pkt) {
+async function onKeyExchange(pkt) {
   const peer = pkt.from;
-  sessionKeys[peer] = nacl.util.decodeBase64(pkt.pubkey);
+  peerPubKeys[peer] = nacl.util.decodeBase64(pkt.pubkey);
 
-  if (peer === currentPeer) setStatus('🔒 Зашифровано (E2E)', true);
+  if (peer === currentPeer) {
+    setStatus('🔒 Зашифровано (E2E)', true);
+    await updateFingerprint(peer);
+  }
 
-  // Respond if we haven't sent our key yet
   if (!keySent[peer]) {
     keySent[peer] = true;
-    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
+    ws.send(JSON.stringify({ type: 'key_exchange', to: peer, pubkey: exportPub() }));
   }
+}
+
+async function updateFingerprint(peer) {
+  if (!peerPubKeys[peer]) return;
+  const fp = await keyFingerprint(peerPubKeys[peer]);
+  const bar = document.getElementById('fingerprint-bar');
+  bar.textContent = '🔑 ' + fp;
+}
+
+async function showFingerprint() {
+  if (!currentPeer || !peerPubKeys[currentPeer]) return;
+  const myFp   = await keyFingerprint(myKeyPair.publicKey);
+  const peerFp = await keyFingerprint(peerPubKeys[currentPeer]);
+  alert(
+    `Fingerprint верификация\n\nВаш ключ:\n${myFp}\n\nКлюч ${currentPeer}:\n${peerFp}\n\n` +
+    `Сравните ключ собеседника по другому каналу (голос/встреча).\nЕсли совпадает — соединение защищено от MITM.`
+  );
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 function onMessage(pkt) {
   const peer = pkt.from;
-  if (!sessionKeys[peer]) return;
+  if (!peerPubKeys[peer]) { addSys('⚠️ Получено сообщение без ключа'); return; }
   try {
-    const text = decryptMsg(pkt.data, sessionKeys[peer]);
+    const text = decryptMsg(pkt.data, peerPubKeys[peer]);
     const ts = Date.now() / 1000;
     if (!chats[peer]) chats[peer] = [];
     chats[peer].push({ sender: peer, text, ts });
-
-    if (peer === currentPeer) {
-      _addBubble(peer, text, ts);
-    } else {
-      unread[peer] = (unread[peer] || 0) + 1;
-    }
+    if (peer === currentPeer) _addBubble(peer, text, ts);
+    else unread[peer] = (unread[peer] || 0) + 1;
     renderUsers(onlineUsers);
-  } catch(e) { console.error('decrypt error', e); }
+  } catch(e) {
+    addSys('❌ Ошибка расшифровки — сообщение повреждено или подделано');
+  }
 }
 
 function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text || !currentPeer) return;
-  if (!sessionKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
+  if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
 
-  const data = encryptMsg(text, sessionKeys[currentPeer]);
-  ws.send(JSON.stringify({ type: 'message', from: username, to: currentPeer, data }));
+  const data = encryptMsg(text, peerPubKeys[currentPeer]);
+  ws.send(JSON.stringify({ type: 'message', to: currentPeer, data }));
 
   const ts = Date.now() / 1000;
   if (!chats[currentPeer]) chats[currentPeer] = [];
@@ -348,7 +386,7 @@ function sendMessage() {
   input.style.height = 'auto';
 }
 
-// ── UI ────────────────────────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────────────
 function setStatus(text, secure) {
   const el = document.getElementById('enc-status');
   el.textContent = text;
@@ -379,6 +417,7 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('inp-server').value = location.host;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
@@ -386,9 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const ta = document.getElementById('msg-input');
   ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-
-  const params = new URLSearchParams(location.search);
-  if (params.get('invite')) document.getElementById('inp-user').value = '';
 });
 </script>
 </body>
