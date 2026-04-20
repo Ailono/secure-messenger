@@ -27,7 +27,16 @@ JWT_SECRET = os.environ.get('JWT_SECRET') or secrets.token_hex(32)
 JWT_ALG    = 'HS256'
 JWT_TTL    = 3600
 
-FCM_SERVER_KEY = os.environ.get('FCM_SERVER_KEY', '')
+# FCM V1 via service account
+_FIREBASE_SA = None
+_fcm_project_id = None
+try:
+    _sa_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT', '')
+    if _sa_json:
+        _FIREBASE_SA = json.loads(_sa_json)
+        _fcm_project_id = _FIREBASE_SA.get('project_id')
+except Exception:
+    pass
 
 _auth_attempts: dict = {}
 RATE_LIMIT  = 10
@@ -55,34 +64,72 @@ def _verify_token(token: str):
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])['sub']
 
 
-# ── FCM push ──────────────────────────────────────────────────────────────────
+# ── FCM V1 push ───────────────────────────────────────────────────────────────
+
+async def _get_fcm_access_token() -> str | None:
+    if not _FIREBASE_SA:
+        return None
+    try:
+        import google.oauth2.service_account as sa
+        import google.auth.transport.requests as ga_requests
+        credentials = sa.Credentials.from_service_account_info(
+            _FIREBASE_SA,
+            scopes=['https://www.googleapis.com/auth/firebase.messaging']
+        )
+        credentials.refresh(ga_requests.Request())
+        return credentials.token
+    except Exception as e:
+        logging.warning(f'FCM token error: {e}')
+        return None
+
 
 async def _send_fcm(to_token: str, sender: str):
-    if not FCM_SERVER_KEY or not to_token:
+    if not _FIREBASE_SA or not to_token:
+        return
+    access_token = await asyncio.get_event_loop().run_in_executor(None, _get_fcm_access_token_sync)
+    if not access_token:
         return
     payload = {
-        'to': to_token,
-        'notification': {
-            'title': sender,
-            'body': '🔒 Новое зашифрованное сообщение',
-            'sound': 'default',
-        },
-        'data': {'sender': sender},
-        'priority': 'high',
+        'message': {
+            'token': to_token,
+            'notification': {
+                'title': sender,
+                'body': '🔒 Новое зашифрованное сообщение',
+            },
+            'data': {'sender': sender},
+            'android': {'priority': 'high'},
+        }
     }
     try:
         async with aiohttp.ClientSession() as session:
             await session.post(
-                'https://fcm.googleapis.com/fcm/send',
+                f'https://fcm.googleapis.com/v1/projects/{_fcm_project_id}/messages:send',
                 json=payload,
                 headers={
-                    'Authorization': f'key={FCM_SERVER_KEY}',
+                    'Authorization': f'Bearer {access_token}',
                     'Content-Type': 'application/json',
                 },
                 timeout=aiohttp.ClientTimeout(total=5),
             )
     except Exception as e:
-        logging.warning(f'FCM error: {e}')
+        logging.warning(f'FCM send error: {e}')
+
+
+def _get_fcm_access_token_sync():
+    if not _FIREBASE_SA:
+        return None
+    try:
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request
+        credentials = service_account.Credentials.from_service_account_info(
+            _FIREBASE_SA,
+            scopes=['https://www.googleapis.com/auth/firebase.messaging']
+        )
+        credentials.refresh(Request())
+        return credentials.token
+    except Exception as e:
+        logging.warning(f'FCM token sync error: {e}')
+        return None
 
 
 # ── Auth endpoints ────────────────────────────────────────────────────────────
