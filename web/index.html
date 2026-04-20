@@ -7,227 +7,130 @@
 <link rel="manifest" href="/web/manifest.json">
 <meta name="theme-color" content="#16212e">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Messenger">
-<!-- TweetNaCl — работает без HTTPS -->
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; color: #e0e0e0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #16212e;
-    color: #e0e0e0;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-  }
+/* ── Login ── */
+#login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; padding: 24px; }
+#login-screen h1 { color: #5b9bd5; font-size: 24px; margin-bottom: 8px; }
+#login-screen input { width: 100%; max-width: 320px; padding: 13px 16px; background: #1e2d3d; border: 1px solid #2a3a50; border-radius: 10px; color: #e0e0e0; font-size: 15px; outline: none; }
+#login-screen input:focus { border-color: #5b9bd5; }
+#login-screen button { width: 100%; max-width: 320px; padding: 13px; background: #2b5278; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; }
+#login-screen button:active { background: #1e3d5c; }
+#login-error { color: #f44336; font-size: 13px; min-height: 18px; }
 
-  /* ── Login screen ── */
-  #login-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    gap: 12px;
-    padding: 24px;
-  }
-  #login-screen h1 { color: #5b9bd5; font-size: 22px; margin-bottom: 8px; }
-  #login-screen input {
-    width: 100%;
-    max-width: 320px;
-    padding: 12px 16px;
-    background: #1e2d3d;
-    border: 1px solid #2a3a50;
-    border-radius: 10px;
-    color: #e0e0e0;
-    font-size: 15px;
-    outline: none;
-  }
-  #login-screen input:focus { border-color: #5b9bd5; }
-  #login-screen button {
-    width: 100%;
-    max-width: 320px;
-    padding: 13px;
-    background: #2b5278;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 4px;
-  }
-  #login-screen button:active { background: #1e3d5c; }
-  #login-error { color: #f44336; font-size: 13px; min-height: 18px; }
+/* ── App layout ── */
+#app { display: none; flex: 1; overflow: hidden; }
+#app.show { display: flex; }
 
-  /* ── Chat screen ── */
-  #chat-screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+/* ── Sidebar ── */
+#sidebar { width: 280px; background: #1a2535; border-right: 1px solid #2a3a50; display: flex; flex-direction: column; flex-shrink: 0; }
+#sidebar-header { padding: 16px; border-bottom: 1px solid #2a3a50; }
+#sidebar-header .app-title { color: #5b9bd5; font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+#sidebar-header .my-name { color: #888; font-size: 12px; }
+#users-list { flex: 1; overflow-y: auto; }
+#users-list::-webkit-scrollbar { width: 4px; }
+#users-list::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
+.user-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #1e2d3d; transition: background 0.15s; }
+.user-item:hover { background: #1e2d3d; }
+.user-item.active { background: #2b5278; }
+.user-avatar { width: 42px; height: 42px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.user-item.active .user-avatar { background: #3a6a9a; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-last { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.user-badge { background: #5b9bd5; color: white; border-radius: 10px; font-size: 11px; padding: 2px 6px; flex-shrink: 0; }
+#no-users { padding: 24px 16px; text-align: center; color: #555; font-size: 13px; }
 
-  /* Header */
-  #chat-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    background: #1e2d3d;
-    border-bottom: 1px solid #2a3a50;
-    flex-shrink: 0;
-  }
-  #chat-header .avatar {
-    width: 38px; height: 38px;
-    background: #2b5278;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  #chat-header .info { flex: 1; }
-  #chat-header .name { font-weight: 600; font-size: 15px; }
-  #chat-header .status { font-size: 12px; color: #f0a500; }
-  #chat-header .status.secure { color: #4caf50; }
+/* ── Chat area ── */
+#chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #555; gap: 12px; }
+#empty-state .icon { font-size: 64px; }
+#chat-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+#chat-view.show { display: flex; }
 
-  /* Messages */
-  #messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    scroll-behavior: smooth;
-  }
-  #messages::-webkit-scrollbar { width: 4px; }
-  #messages::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
+#chat-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #1e2d3d; border-bottom: 1px solid #2a3a50; flex-shrink: 0; }
+#chat-header .avatar { width: 38px; height: 38px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#chat-header .info { flex: 1; }
+#chat-header .name { font-weight: 600; font-size: 15px; }
+#chat-header .status { font-size: 11px; color: #f0a500; }
+#chat-header .status.secure { color: #4caf50; }
 
-  .bubble {
-    max-width: 75%;
-    padding: 8px 12px;
-    border-radius: 14px;
-    font-size: 14px;
-    line-height: 1.45;
-    word-break: break-word;
-  }
-  .bubble .meta {
-    font-size: 11px;
-    color: #888;
-    margin-bottom: 3px;
-  }
-  .bubble.mine {
-    align-self: flex-end;
-    background: #2b5278;
-    border-bottom-right-radius: 4px;
-  }
-  .bubble.theirs {
-    align-self: flex-start;
-    background: #1e2d3d;
-    border-bottom-left-radius: 4px;
-  }
-  .bubble .time {
-    font-size: 10px;
-    color: #666;
-    text-align: right;
-    margin-top: 4px;
-  }
+#messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+#messages::-webkit-scrollbar { width: 4px; }
+#messages::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
 
-  .sys-msg {
-    text-align: center;
-    font-size: 12px;
-    color: #555;
-    padding: 4px 0;
-  }
+.bubble { max-width: 72%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; word-break: break-word; }
+.bubble.mine { align-self: flex-end; background: #2b5278; border-bottom-right-radius: 4px; }
+.bubble.theirs { align-self: flex-start; background: #1e2d3d; border-bottom-left-radius: 4px; }
+.bubble .meta { font-size: 11px; color: #888; margin-bottom: 3px; }
+.bubble .time { font-size: 10px; color: #666; text-align: right; margin-top: 4px; }
+.sys-msg { text-align: center; font-size: 12px; color: #555; padding: 4px 0; }
 
-  /* Input */
-  #input-area {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: #1e2d3d;
-    border-top: 1px solid #2a3a50;
-    flex-shrink: 0;
-  }
-  #msg-input {
-    flex: 1;
-    padding: 10px 16px;
-    background: #16212e;
-    border: 1px solid #2a3a50;
-    border-radius: 22px;
-    color: #e0e0e0;
-    font-size: 15px;
-    outline: none;
-    resize: none;
-    max-height: 120px;
-    overflow-y: auto;
-  }
-  #msg-input:focus { border-color: #5b9bd5; }
-  #send-btn {
-    width: 44px; height: 44px;
-    background: #2b5278;
-    border: none;
-    border-radius: 50%;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  #send-btn:active { background: #1e3d5c; }
+#input-area { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #1e2d3d; border-top: 1px solid #2a3a50; flex-shrink: 0; }
+#msg-input { flex: 1; padding: 10px 16px; background: #16212e; border: 1px solid #2a3a50; border-radius: 22px; color: #e0e0e0; font-size: 15px; outline: none; resize: none; max-height: 120px; overflow-y: auto; }
+#msg-input:focus { border-color: #5b9bd5; }
+#send-btn { width: 44px; height: 44px; background: #2b5278; border: none; border-radius: 50%; color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#send-btn:active { background: #1e3d5c; }
 
-  #invite-btn {
-    background: none;
-    border: 1px solid #2a3a50;
-    border-radius: 8px;
-    color: #5b9bd5;
-    font-size: 18px;
-    padding: 6px 10px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  #invite-btn:active { background: #1e2d3d; }
-  #invite-toast {
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #2b5278;
-    color: white;
-    padding: 8px 18px;
-    border-radius: 20px;
-    font-size: 13px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-  }
-  #invite-toast.show { opacity: 1; }
+/* Mobile: hide sidebar when chat open */
+@media (max-width: 600px) {
+  #sidebar { width: 100%; position: absolute; top: 0; left: 0; bottom: 0; z-index: 10; }
+  #sidebar.hidden { display: none; }
+  #chat-area { width: 100%; }
+  #chat-header .back-btn { display: flex !important; }
+}
+.back-btn { display: none; background: none; border: none; color: #5b9bd5; font-size: 22px; cursor: pointer; padding: 0 8px 0 0; }
+
+#invite-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #2b5278; color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+#invite-toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
-<!-- ── Login ── -->
 <div id="login-screen">
   <h1>💬 Secure Messenger</h1>
-  <input id="inp-server" placeholder="Адрес сервера (IP или домен)" value="">
-  <input id="inp-user"   placeholder="Ваше имя">
-  <input id="inp-peer"   placeholder="Имя собеседника">
+  <input id="inp-server" placeholder="Адрес сервера">
+  <input id="inp-user" placeholder="Ваше имя">
   <div id="login-error"></div>
-  <button onclick="connect()">Подключиться</button>
+  <button onclick="connect()">Войти</button>
 </div>
 
-<!-- ── Chat ── -->
-<div id="chat-screen">
-  <div id="chat-header">
-    <div class="avatar">👤</div>
-    <div class="info">
-      <div class="name" id="peer-name"></div>
-      <div class="status" id="enc-status">Ожидание собеседника...</div>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div class="app-title">💬 Secure Messenger</div>
+      <div class="my-name" id="my-name-label"></div>
     </div>
-    <button id="invite-btn" onclick="copyInvite()" title="Скопировать ссылку-приглашение">🔗</button>
+    <div id="users-list">
+      <div id="no-users">Нет пользователей онлайн</div>
+    </div>
   </div>
-  <div id="messages"></div>
-  <div id="input-area">
-    <textarea id="msg-input" rows="1" placeholder="Сообщение..."></textarea>
-    <button id="send-btn" onclick="sendMessage()">➤</button>
+
+  <div id="chat-area">
+    <div id="empty-state">
+      <div class="icon">💬</div>
+      <div>Выберите собеседника</div>
+    </div>
+    <div id="chat-view">
+      <div id="chat-header">
+        <button class="back-btn" onclick="backToList()">←</button>
+        <div class="avatar">👤</div>
+        <div class="info">
+          <div class="name" id="peer-name-label"></div>
+          <div class="status" id="enc-status">Обмен ключами...</div>
+        </div>
+      </div>
+      <div id="messages"></div>
+      <div id="input-area">
+        <textarea id="msg-input" rows="1" placeholder="Сообщение..."></textarea>
+        <button id="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -235,33 +138,30 @@
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-let ws, username, peerName, sessionKey;
-let myKeyPair;   // nacl.box.keyPair()
-let keySent = false;
+let ws, username, currentPeer;
+let myKeyPair = null;
+let keySent = {};        // peer -> bool
+let sessionKeys = {};    // peer -> Uint8Array (their public key)
+let chats = {};          // peer -> [{sender, text, ts}]
+let unread = {};         // peer -> count
 
-// ── Crypto (TweetNaCl — X25519 + XSalsa20-Poly1305, работает без HTTPS) ───────
-function generateKeyPair() {
-  return nacl.box.keyPair();
-}
+// ── Crypto ────────────────────────────────────────────────────────────────────
+function initCrypto() { myKeyPair = nacl.box.keyPair(); }
+function exportPub() { return nacl.util.encodeBase64(myKeyPair.publicKey); }
 
-function exportPublicKey(kp) {
-  return nacl.util.encodeBase64(kp.publicKey);
-}
-
-function encryptMsg(text, theirPublicKey, mySecretKey) {
+function encryptMsg(text, theirPub) {
   const nonce = nacl.randomBytes(nacl.box.nonceLength);
-  const msg   = nacl.util.decodeUTF8(text);
-  const ct    = nacl.box(msg, nonce, theirPublicKey, mySecretKey);
-  const out   = new Uint8Array(nonce.length + ct.length);
+  const ct = nacl.box(nacl.util.decodeUTF8(text), nonce, theirPub, myKeyPair.secretKey);
+  const out = new Uint8Array(nonce.length + ct.length);
   out.set(nonce); out.set(ct, nonce.length);
   return nacl.util.encodeBase64(out);
 }
 
-function decryptMsg(b64, theirPublicKey, mySecretKey) {
-  const data  = nacl.util.decodeBase64(b64);
+function decryptMsg(b64, theirPub) {
+  const data = nacl.util.decodeBase64(b64);
   const nonce = data.slice(0, nacl.box.nonceLength);
-  const ct    = data.slice(nacl.box.nonceLength);
-  const pt    = nacl.box.open(ct, nonce, theirPublicKey, mySecretKey);
+  const ct = data.slice(nacl.box.nonceLength);
+  const pt = nacl.box.open(ct, nonce, theirPub, myKeyPair.secretKey);
   if (!pt) throw new Error('decrypt failed');
   return nacl.util.encodeUTF8(pt);
 }
@@ -270,153 +170,177 @@ function decryptMsg(b64, theirPublicKey, mySecretKey) {
 function connect() {
   const server = document.getElementById('inp-server').value.trim();
   username = document.getElementById('inp-user').value.trim();
-  peerName = document.getElementById('inp-peer').value.trim();
   const err = document.getElementById('login-error');
 
-  if (!server || !username || !peerName) {
-    err.textContent = 'Заполните все поля';
-    return;
-  }
+  if (!server || !username) { err.textContent = 'Заполните все поля'; return; }
 
-  myKeyPair = generateKeyPair();
-
+  initCrypto();
   err.textContent = 'Подключение...';
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const wsUrl = `${proto}://${server}/ws`;
-  console.log('Connecting to', wsUrl);
 
-  try {
-    ws = new WebSocket(wsUrl);
-  } catch(e) {
-    err.textContent = 'Неверный адрес сервера: ' + e.message;
-    return;
-  }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  try { ws = new WebSocket(`${proto}://${server}/ws`); } catch(e) { err.textContent = 'Неверный адрес'; return; }
 
   ws.onopen = () => {
-    err.textContent = '';
-    ws.send(JSON.stringify({ type: 'register', username, recipient: peerName }));
+    ws.send(JSON.stringify({ type: 'register', username }));
   };
-
-  ws.onmessage = async (e) => {
-    const pkt = JSON.parse(e.data);
-    if      (pkt.type === 'ack')          onAck();
-    else if (pkt.type === 'peer_online')  onPeerOnline();
-    else if (pkt.type === 'key_exchange') onKeyExchange(pkt);
-    else if (pkt.type === 'message')      onMessage(pkt);
-    else if (pkt.type === 'error')        addSys('⚠️ ' + pkt.msg);
-  };
-
-  ws.onerror = (e) => {
-    console.error('WS error', e);
-    err.textContent = 'Ошибка подключения. Проверь: запущен ли сервер и правильный ли IP.';
-  };
-
-  ws.onclose = (e) => {
-    if (e.code !== 1000) {
-      err.textContent = `Соединение закрыто (код ${e.code}). Сервер недоступен?`;
-    }
-  };
-  ws.onclose = () => setStatus('❌ Соединение потеряно', false);
+  ws.onmessage = (e) => onPacket(JSON.parse(e.data));
+  ws.onerror = () => { err.textContent = 'Ошибка подключения'; };
+  ws.onclose = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
 }
 
-function onAck() {
-  document.getElementById('login-screen').style.display = 'none';
-  const cs = document.getElementById('chat-screen');
-  cs.style.display = 'flex';
-  document.getElementById('peer-name').textContent = peerName;
-  addSys('Подключено. Ожидаем собеседника...');
+function onPacket(pkt) {
+  if (pkt.type === 'ack') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('show');
+    document.getElementById('my-name-label').textContent = '🔵 ' + username;
+  }
+  else if (pkt.type === 'users') renderUsers(pkt.users);
+  else if (pkt.type === 'key_exchange') onKeyExchange(pkt);
+  else if (pkt.type === 'message') onMessage(pkt);
+  else if (pkt.type === 'error') addSys(pkt.msg);
 }
 
-async function onPeerOnline() {
-  addSys(`${peerName} в сети — обмен ключами...`);
-  const pubB64 = exportPublicKey(myKeyPair);
-  ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peerName, pubkey: pubB64 }));
+// ── Users list ────────────────────────────────────────────────────────────────
+function renderUsers(users) {
+  const list = document.getElementById('users-list');
+  const noUsers = document.getElementById('no-users');
+
+  if (users.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(noUsers);
+    noUsers.style.display = 'block';
+    return;
+  }
+  noUsers.style.display = 'none';
+  list.innerHTML = '';
+
+  users.forEach(peer => {
+    const lastMsg = chats[peer] ? chats[peer][chats[peer].length - 1] : null;
+    const badge = unread[peer] ? `<span class="user-badge">${unread[peer]}</span>` : '';
+    const div = document.createElement('div');
+    div.className = 'user-item' + (peer === currentPeer ? ' active' : '');
+    div.innerHTML = `
+      <div class="user-avatar">👤</div>
+      <div class="user-info">
+        <div class="user-name">${escHtml(peer)}</div>
+        <div class="user-last">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : 'Нажмите чтобы написать'}</div>
+      </div>
+      ${badge}
+    `;
+    div.onclick = () => openChat(peer);
+    list.appendChild(div);
+  });
 }
 
+// ── Open chat ─────────────────────────────────────────────────────────────────
+function openChat(peer) {
+  currentPeer = peer;
+  unread[peer] = 0;
+  if (!chats[peer]) chats[peer] = [];
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('chat-view').classList.add('show');
+  document.getElementById('peer-name-label').textContent = peer;
+
+  // Mobile: hide sidebar
+  document.getElementById('sidebar').classList.add('hidden');
+
+  // Render history
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  chats[peer].forEach(m => _addBubble(m.sender, m.text, m.ts));
+
+  // Key exchange if not done
+  if (!sessionKeys[peer]) {
+    setStatus('🔑 Обмен ключами...', false);
+    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
+    keySent[peer] = true;
+  } else {
+    setStatus('🔒 Зашифровано (E2E)', true);
+  }
+
+  // Update sidebar active state
+  document.querySelectorAll('.user-item').forEach(el => {
+    el.classList.toggle('active', el.querySelector('.user-name')?.textContent === peer);
+  });
+
+  msgs.scrollTop = msgs.scrollHeight;
+  document.getElementById('msg-input').focus();
+}
+
+function backToList() {
+  document.getElementById('sidebar').classList.remove('hidden');
+  document.getElementById('chat-view').classList.remove('show');
+  document.getElementById('empty-state').style.display = 'flex';
+  currentPeer = null;
+}
+
+// ── Key exchange ──────────────────────────────────────────────────────────────
 function onKeyExchange(pkt) {
-  sessionKey = nacl.util.decodeBase64(pkt.pubkey);
-  setStatus('🔒 Зашифровано (E2E)', true);
+  const peer = pkt.from;
+  sessionKeys[peer] = nacl.util.decodeBase64(pkt.pubkey);
 
-  if (!keySent) {
-    keySent = true;
-    const pubB64 = exportPublicKey(myKeyPair);
-    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peerName, pubkey: pubB64 }));
+  if (peer === currentPeer) setStatus('🔒 Зашифровано (E2E)', true);
+
+  // Respond if we haven't sent our key yet
+  if (!keySent[peer]) {
+    keySent[peer] = true;
+    ws.send(JSON.stringify({ type: 'key_exchange', from: username, to: peer, pubkey: exportPub() }));
   }
 }
 
+// ── Messages ──────────────────────────────────────────────────────────────────
 function onMessage(pkt) {
+  const peer = pkt.from;
+  if (!sessionKeys[peer]) return;
   try {
-    const text = decryptMsg(pkt.data, sessionKey, myKeyPair.secretKey);
-    addBubble(pkt.from, text, false);
-  } catch {
-    addSys('⚠️ Не удалось расшифровать сообщение');
-  }
+    const text = decryptMsg(pkt.data, sessionKeys[peer]);
+    const ts = Date.now() / 1000;
+    if (!chats[peer]) chats[peer] = [];
+    chats[peer].push({ sender: peer, text, ts });
+
+    if (peer === currentPeer) {
+      _addBubble(peer, text, ts);
+    } else {
+      unread[peer] = (unread[peer] || 0) + 1;
+    }
+    // Refresh sidebar
+    const users = Array.from(document.querySelectorAll('.user-name')).map(el => el.textContent);
+    renderUsers(users);
+  } catch(e) { console.error('decrypt error', e); }
 }
 
 function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!text) return;
-  if (!sessionKey) { addSys('⚠️ Ключ ещё не согласован'); return; }
+  if (!text || !currentPeer) return;
+  if (!sessionKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
 
-  const data = encryptMsg(text, sessionKey, myKeyPair.secretKey);
-  ws.send(JSON.stringify({ type: 'message', from: username, to: peerName, data }));
-  addBubble(username, text, true);
+  const data = encryptMsg(text, sessionKeys[currentPeer]);
+  ws.send(JSON.stringify({ type: 'message', from: username, to: currentPeer, data }));
+
+  const ts = Date.now() / 1000;
+  if (!chats[currentPeer]) chats[currentPeer] = [];
+  chats[currentPeer].push({ sender: username, text, ts });
+  _addBubble(username, text, ts);
   input.value = '';
   input.style.height = 'auto';
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
-function copyInvite() {
-  const url = `${location.protocol}//${location.host}/?invite=${encodeURIComponent(username)}`;
-
-  // Try modern clipboard API first, fall back to execCommand, then prompt
-  const finish = (ok) => {
-    if (ok) {
-      const toast = document.getElementById('invite-toast');
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2000);
-    }
-  };
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(() => finish(true)).catch(() => legacyCopy(url, finish));
-  } else {
-    legacyCopy(url, finish);
-  }
-}
-
-function legacyCopy(url, finish) {
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = url;
-    ta.style.cssText = 'position:fixed;opacity:0';
-    document.body.appendChild(ta);
-    ta.focus(); ta.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (ok) { finish(true); return; }
-  } catch {}
-  // Last resort — show the link so user can copy manually
-  prompt('Скопируй ссылку вручную (Ctrl+C):', url);
-  finish(false);
-}
+// ── UI ────────────────────────────────────────────────────────────────────────
 function setStatus(text, secure) {
   const el = document.getElementById('enc-status');
   el.textContent = text;
   el.className = 'status' + (secure ? ' secure' : '');
 }
 
-function addBubble(sender, text, mine) {
+function _addBubble(sender, text, ts) {
   const msgs = document.getElementById('messages');
-  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isMine = sender === username;
+  const time = new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const div = document.createElement('div');
-  div.className = 'bubble ' + (mine ? 'mine' : 'theirs');
-  div.innerHTML = `
-    ${!mine ? `<div class="meta">${escHtml(sender)}</div>` : ''}
-    ${escHtml(text)}
-    <div class="time">${now}</div>
-  `;
+  div.className = 'bubble ' + (isMine ? 'mine' : 'theirs');
+  div.innerHTML = `${escHtml(text)}<div class="time">${time}</div>`;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -431,31 +355,19 @@ function addSys(text) {
 }
 
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// Auto-resize textarea + parse invite link
 document.addEventListener('DOMContentLoaded', () => {
-  // Register service worker for PWA
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/web/sw.js');
-  }
   document.getElementById('inp-server').value = location.host;
-
-  // If opened via invite link ?invite=Alice — pre-fill peer name
-  const params = new URLSearchParams(location.search);
-  if (params.get('invite')) {
-    document.getElementById('inp-peer').value = params.get('invite');
-  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
 
   const ta = document.getElementById('msg-input');
-  ta.addEventListener('input', () => {
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
-  });
-  ta.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
+  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('invite')) document.getElementById('inp-user').value = '';
 });
 </script>
 </body>

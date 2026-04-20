@@ -10,6 +10,16 @@ clients = {}   # username -> WebSocketResponse
 WEB_DIR = pathlib.Path(__file__).parent / 'web'
 
 
+async def broadcast_users():
+    """Send updated online users list to all connected clients."""
+    user_list = list(clients.keys())
+    for username, ws in list(clients.items()):
+        try:
+            await ws.send_str(json.dumps({'type': 'users', 'users': [u for u in user_list if u != username]}))
+        except Exception:
+            pass
+
+
 async def index(request):
     return web.FileResponse(WEB_DIR / 'index.html')
 
@@ -26,26 +36,19 @@ async def websocket_handler(request):
             packet = json.loads(msg.data)
             ptype = packet.get('type')
 
-            # ── Register ──────────────────────────────────────────────────────
             if ptype == 'register':
                 username = packet['username']
                 clients[username] = ws
                 logging.info(f'{username} connected')
                 await ws.send_str(json.dumps({'type': 'ack'}))
+                await broadcast_users()
 
-                # Notify if recipient is already online
-                recipient = packet.get('recipient')
-                if recipient and recipient in clients:
-                    await ws.send_str(json.dumps({'type': 'peer_online', 'username': recipient}))
-                    await clients[recipient].send_str(json.dumps({'type': 'peer_online', 'username': username}))
-
-            # ── Key exchange / message — forward to recipient ─────────────────
             elif ptype in ('key_exchange', 'message'):
                 to = packet.get('to')
                 if to and to in clients:
                     await clients[to].send_str(json.dumps(packet))
                 else:
-                    await ws.send_str(json.dumps({'type': 'error', 'msg': 'user offline'}))
+                    await ws.send_str(json.dumps({'type': 'error', 'msg': f'{to} offline'}))
 
     except Exception as e:
         logging.error(f'WS error ({username}): {e}')
@@ -53,6 +56,7 @@ async def websocket_handler(request):
         if username:
             clients.pop(username, None)
             logging.info(f'{username} disconnected')
+            await broadcast_users()
         await ws.close()
 
     return ws
