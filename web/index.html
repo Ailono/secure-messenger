@@ -163,7 +163,25 @@ let onlineUsers = [];
 let allUsers = [];
 
 // ── Crypto ────────────────────────────────────────────────────────────────────
-function initCrypto() { myKeyPair = nacl.box.keyPair(); }
+function initCrypto() {
+  const storageKey = 'keypair_' + username;
+  const saved = localStorage.getItem(storageKey);
+  if (saved) {
+    try {
+      const { pub, sec } = JSON.parse(saved);
+      myKeyPair = {
+        publicKey:  nacl.util.decodeBase64(pub),
+        secretKey:  nacl.util.decodeBase64(sec)
+      };
+      return;
+    } catch(e) {}
+  }
+  myKeyPair = nacl.box.keyPair();
+  localStorage.setItem(storageKey, JSON.stringify({
+    pub: nacl.util.encodeBase64(myKeyPair.publicKey),
+    sec: nacl.util.encodeBase64(myKeyPair.secretKey)
+  }));
+}
 function exportPub()  { return nacl.util.encodeBase64(myKeyPair.publicKey); }
 
 async function keyFingerprint(pubKeyBytes) {
