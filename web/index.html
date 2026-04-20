@@ -427,19 +427,31 @@ async function openChat(peer) {
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
 
-  // Load encrypted history from server, decrypt client-side
   await loadHistory(peer);
 
   if (!keySent[peer]) {
     keySent[peer] = true;
     ws.send(JSON.stringify({type:'key_exchange', to:peer, pubkey:exportPub()}));
   }
-  // Tell peer we've read their messages
+
+  // If peer is offline, try fetching their stored public key
+  if (!peerPubKeys[peer]) {
+    try {
+      const r = await fetch(`https://${serverHost}/pubkey/${encodeURIComponent(peer)}?token=${encodeURIComponent(authToken)}`);
+      if (r.ok) {
+        const data = await r.json();
+        peerPubKeys[peer] = nacl.util.decodeBase64(data.pubkey);
+        if (chats[peer]?._pending?.length) decryptPending(peer);
+      }
+    } catch(e) {}
+  }
+
+  if (peerPubKeys[peer]) { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
+  else setStatus('🔑 Ожидание ключа...', false);
+
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({type:'read', peer}));
   }
-  if (peerPubKeys[peer]) { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
-  else setStatus('🔑 Обмен ключами...', false);
 
   msgs.scrollTop = msgs.scrollHeight;
   document.getElementById('msg-input').focus();

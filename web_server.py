@@ -221,6 +221,19 @@ async def handle_fcm_token(request: web.Request):
     return web.json_response({'ok': True})
 
 
+async def handle_get_pubkey(request: web.Request):
+    """Get stored public key for a user (for offline messaging)."""
+    try:
+        _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    username = request.match_info['username']
+    pubkey = database.get_public_key(username)
+    if not pubkey:
+        return web.json_response({'error': 'No key'}, status=404)
+    return web.json_response({'pubkey': pubkey})
+
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 
 async def broadcast_users():
@@ -249,6 +262,17 @@ async def websocket_handler(request: web.Request):
     await ws.send_str(json.dumps({'type': 'ack', 'username': username}))
     await broadcast_users()
 
+    # Deliver pending offline messages
+    pending = database.get_pending_messages(username)
+    for msg in pending:
+        await ws.send_str(json.dumps({
+            'type': 'message',
+            'from': msg['sender'],
+            'data': msg['ciphertext'],
+            'id':   msg['id'],
+        }))
+        database.mark_delivered(msg['id'])
+
     try:
         async for msg in ws:
             if msg.type != web.WSMsgType.TEXT:
@@ -259,6 +283,8 @@ async def websocket_handler(request: web.Request):
 
             if ptype in ('key_exchange', 'key_ratchet'):
                 to = packet.get('to')
+                if ptype == 'key_exchange':
+                    database.save_public_key(username, packet.get('pubkey', ''))
                 if to and to in clients:
                     await clients[to].send_str(json.dumps(packet))
 
@@ -320,6 +346,7 @@ app.router.add_get('/users',                  handle_users)
 app.router.add_get('/conversations',          handle_conversations)
 app.router.add_get('/history/{peer}',         handle_history)
 app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
+app.router.add_get('/pubkey/{username}',       handle_get_pubkey)
 app.router.add_post('/fcm_token',             handle_fcm_token)
 app.router.add_get('/ws',                     websocket_handler)
 app.router.add_static('/web',                 WEB_DIR)

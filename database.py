@@ -47,6 +47,7 @@ def init_db():
                 DO $$ BEGIN
                     ALTER TABLE messages ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
                     ALTER TABLE users    ADD COLUMN IF NOT EXISTS fcm_token TEXT;
+                    ALTER TABLE users    ADD COLUMN IF NOT EXISTS pubkey TEXT;
                 EXCEPTION WHEN others THEN NULL;
                 END $$;
             """)
@@ -99,6 +100,21 @@ def get_fcm_token(username: str):
     return row[0] if row else None
 
 
+def save_public_key(username: str, pubkey: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute('UPDATE users SET pubkey=%s WHERE username=%s', (pubkey, username))
+        conn.commit()
+
+
+def get_public_key(username: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT pubkey FROM users WHERE username=%s', (username,))
+            row = cur.fetchone()
+    return row[0] if row else None
+
+
 # ── Messages ──────────────────────────────────────────────────────────────────
 
 def store_message(sender: str, recipient: str, ciphertext: str) -> int:
@@ -126,6 +142,20 @@ def get_history(user_a: str, user_b: str) -> list:
             )
             rows = cur.fetchall()
     return [{'id': r[0], 'sender': r[1], 'ciphertext': r[2], 'ts': r[3], 'status': r[4]} for r in rows]
+
+
+def get_pending_messages(username: str) -> list:
+    """Get undelivered messages for user (sent while offline)."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''SELECT id, sender, ciphertext FROM messages
+                   WHERE recipient=%s AND status='sent'
+                   ORDER BY timestamp''',
+                (username,)
+            )
+            rows = cur.fetchall()
+    return [{'id': r[0], 'sender': r[1], 'ciphertext': r[2]} for r in rows]
 
 
 def mark_delivered(msg_id: int):
