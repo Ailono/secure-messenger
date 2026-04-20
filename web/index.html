@@ -6,114 +6,131 @@
 <title>Secure Messenger</title>
 <link rel="manifest" href="/web/manifest.json">
 <meta name="theme-color" content="#16212e">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Messenger">
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; color: #e0e0e0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e0;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 
-/* ── Auth screen ── */
-#auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; padding: 24px; }
-#auth-screen h1 { color: #5b9bd5; font-size: 24px; margin-bottom: 4px; }
-#auth-screen input { width: 100%; max-width: 320px; padding: 13px 16px; background: #1e2d3d; border: 1px solid #2a3a50; border-radius: 10px; color: #e0e0e0; font-size: 15px; outline: none; }
-#auth-screen input:focus { border-color: #5b9bd5; }
-#auth-screen input[type=password] { letter-spacing: 2px; }
-.auth-btns { display: flex; gap: 8px; width: 100%; max-width: 320px; }
-.auth-btns button { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; }
-#btn-login    { background: #2b5278; color: white; }
-#btn-register { background: #1e3d5c; color: #aac; }
-.auth-btns button:active { opacity: 0.8; }
-#auth-error { color: #f44336; font-size: 13px; min-height: 18px; }
-#auth-hint  { color: #555; font-size: 12px; text-align: center; max-width: 320px; }
+/* Auth */
+#auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;padding:24px}
+#auth-screen h1{color:#5b9bd5;font-size:24px;margin-bottom:4px}
+#auth-screen input{width:100%;max-width:320px;padding:13px 16px;background:#1e2d3d;border:1px solid #2a3a50;border-radius:10px;color:#e0e0e0;font-size:15px;outline:none}
+#auth-screen input:focus{border-color:#5b9bd5}
+#auth-screen input[type=password]{letter-spacing:2px}
+.auth-btns{display:flex;gap:8px;width:100%;max-width:320px}
+.auth-btns button{flex:1;padding:13px;border:none;border-radius:10px;font-size:15px;cursor:pointer}
+#btn-login{background:#2b5278;color:white}
+#btn-register{background:#1e3d5c;color:#aac}
+#auth-error{color:#f44336;font-size:13px;min-height:18px}
+#auth-hint{color:#555;font-size:12px;text-align:center;max-width:320px}
 
-/* ── App layout ── */
-#app { display: none; flex: 1; overflow: hidden; }
-#app.show { display: flex; }
+/* App */
+#app{display:none;flex:1;overflow:hidden}
+#app.show{display:flex}
 
-/* ── Sidebar ── */
-#sidebar { width: 280px; background: #1a2535; border-right: 1px solid #2a3a50; display: flex; flex-direction: column; flex-shrink: 0; }
-#sidebar-header { padding: 16px; border-bottom: 1px solid #2a3a50; }
-#sidebar-header .app-title { color: #5b9bd5; font-size: 16px; font-weight: bold; margin-bottom: 4px; }
-#sidebar-header .my-name { color: #888; font-size: 12px; }
-#users-list { flex: 1; overflow-y: auto; }
-#users-list::-webkit-scrollbar { width: 4px; }
-#users-list::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
-.user-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #1e2d3d; transition: background 0.15s; }
-.user-item:hover { background: #1e2d3d; }
-.user-item.active { background: #2b5278; }
-.user-avatar { width: 42px; height: 42px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.user-item.active .user-avatar { background: #3a6a9a; }
-.user-info { flex: 1; min-width: 0; }
-.user-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.user-last { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-.user-badge { background: #5b9bd5; color: white; border-radius: 10px; font-size: 11px; padding: 2px 6px; flex-shrink: 0; }
+/* Sidebar */
+#sidebar{width:280px;background:#1a2535;border-right:1px solid #2a3a50;display:flex;flex-direction:column;flex-shrink:0}
+#sidebar-header{padding:14px 16px;border-bottom:1px solid #2a3a50}
+.app-title{color:#5b9bd5;font-size:15px;font-weight:bold}
+.my-name{color:#888;font-size:12px;margin-top:2px}
 
-/* ── Chat area ── */
-#chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-#empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #555; gap: 12px; }
-#empty-state .icon { font-size: 64px; }
-#chat-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
-#chat-view.show { display: flex; }
-#chat-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #1e2d3d; border-bottom: 1px solid #2a3a50; flex-shrink: 0; }
-#chat-header .avatar { width: 38px; height: 38px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#chat-header .info { flex: 1; }
-#chat-header .name { font-weight: 600; font-size: 15px; }
-#chat-header .status { font-size: 11px; color: #f0a500; }
-#chat-header .status.secure { color: #4caf50; }
-#fingerprint-bar { font-size: 10px; color: #555; padding: 2px 0 0 0; font-family: monospace; cursor: pointer; }
-#fingerprint-bar:hover { color: #5b9bd5; }
-#messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
-#messages::-webkit-scrollbar { width: 4px; }
-#messages::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
-.bubble { max-width: 72%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; word-break: break-word; }
-.bubble.mine { align-self: flex-end; background: #2b5278; border-bottom-right-radius: 4px; }
-.bubble.theirs { align-self: flex-start; background: #1e2d3d; border-bottom-left-radius: 4px; }
-.bubble .time { font-size: 10px; color: #666; text-align: right; margin-top: 4px; }
-.sys-msg { text-align: center; font-size: 12px; color: #555; padding: 4px 0; }
-#input-area { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #1e2d3d; border-top: 1px solid #2a3a50; flex-shrink: 0; }
-#msg-input { flex: 1; padding: 10px 16px; background: #16212e; border: 1px solid #2a3a50; border-radius: 22px; color: #e0e0e0; font-size: 15px; outline: none; resize: none; max-height: 120px; overflow-y: auto; }
-#msg-input:focus { border-color: #5b9bd5; }
-#send-btn { width: 44px; height: 44px; background: #2b5278; border: none; border-radius: 50%; color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-#send-btn:active { background: #1e3d5c; }
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid #2a3a50}
+.tab{flex:1;padding:10px;text-align:center;font-size:13px;cursor:pointer;color:#888;border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:#5b9bd5;border-bottom-color:#5b9bd5}
+.tab-panel{display:none;flex:1;overflow-y:auto;flex-direction:column}
+.tab-panel.active{display:flex}
 
-@media (max-width: 600px) {
-  #sidebar { width: 100%; position: absolute; top: 0; left: 0; bottom: 0; z-index: 10; }
-  #sidebar.hidden { display: none; }
-  #chat-area { width: 100%; }
-  #chat-header .back-btn { display: flex !important; }
+/* List items */
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid #1e2d3d;transition:background .15s}
+.list-item:hover{background:#1e2d3d}
+.list-item.active{background:#2b5278}
+.item-avatar{width:42px;height:42px;background:#2b5278;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;position:relative}
+.list-item.active .item-avatar{background:#3a6a9a}
+.online-dot{position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:#4caf50;border-radius:50%;border:2px solid #1a2535}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-sub{font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.item-badge{background:#5b9bd5;color:white;border-radius:10px;font-size:11px;padding:2px 6px;flex-shrink:0}
+.empty-list{padding:24px 16px;text-align:center;color:#555;font-size:13px}
+
+/* Chat area */
+#chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555;gap:12px}
+#empty-state .icon{font-size:64px}
+#chat-view{display:none;flex-direction:column;flex:1;overflow:hidden}
+#chat-view.show{display:flex}
+#chat-header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#1e2d3d;border-bottom:1px solid #2a3a50;flex-shrink:0}
+#chat-header .avatar{width:38px;height:38px;background:#2b5278;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px}
+#chat-header .info{flex:1}
+#chat-header .name{font-weight:600;font-size:15px}
+#chat-header .status{font-size:11px;color:#f0a500}
+#chat-header .status.secure{color:#4caf50}
+#fingerprint-bar{font-size:10px;color:#555;padding:2px 0 0;font-family:monospace;cursor:pointer}
+#fingerprint-bar:hover{color:#5b9bd5}
+#messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+#messages::-webkit-scrollbar{width:4px}
+#messages::-webkit-scrollbar-thumb{background:#2a3a50;border-radius:2px}
+.bubble{max-width:72%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word}
+.bubble.mine{align-self:flex-end;background:#2b5278;border-bottom-right-radius:4px}
+.bubble.theirs{align-self:flex-start;background:#1e2d3d;border-bottom-left-radius:4px}
+.bubble .time{font-size:10px;color:#666;text-align:right;margin-top:4px}
+.sys-msg{text-align:center;font-size:12px;color:#555;padding:4px 0}
+#input-area{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2d3d;border-top:1px solid #2a3a50;flex-shrink:0}
+#msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:auto}
+#msg-input:focus{border-color:#5b9bd5}
+#send-btn{width:44px;height:44px;background:#2b5278;border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#send-btn:active{background:#1e3d5c}
+
+/* Start chat button */
+.start-chat-btn{margin:12px 16px;padding:10px;background:#2b5278;border:none;border-radius:8px;color:white;font-size:14px;cursor:pointer;width:calc(100% - 32px)}
+.start-chat-btn:hover{background:#3a6a9a}
+
+@media(max-width:600px){
+  #sidebar{width:100%;position:absolute;top:0;left:0;bottom:0;z-index:10}
+  #sidebar.hidden{display:none}
+  #chat-area{width:100%}
+  #chat-header .back-btn{display:flex!important}
 }
-.back-btn { display: none; background: none; border: none; color: #5b9bd5; font-size: 22px; cursor: pointer; padding: 0 8px 0 0; }
+.back-btn{display:none;background:none;border:none;color:#5b9bd5;font-size:22px;cursor:pointer;padding:0 8px 0 0}
 </style>
 </head>
 <body>
 
-<!-- ── Auth screen ── -->
 <div id="auth-screen">
   <h1>🔒 Secure Messenger</h1>
-  <input id="inp-server" placeholder="Адрес сервера (host:port)">
-  <input id="inp-user"   placeholder="Имя пользователя">
-  <input id="inp-pass"   type="password" placeholder="Пароль (мин. 8 символов)">
+  <input id="inp-server" placeholder="Адрес сервера">
+  <input id="inp-user" placeholder="Имя пользователя">
+  <input id="inp-pass" type="password" placeholder="Пароль (мин. 8 символов)">
   <div id="auth-error"></div>
   <div class="auth-btns">
-    <button id="btn-login"    onclick="doLogin()">Войти</button>
+    <button id="btn-login" onclick="doLogin()">Войти</button>
     <button id="btn-register" onclick="doRegister()">Регистрация</button>
   </div>
-  <div id="auth-hint">Пароль никогда не передаётся на сервер в открытом виде</div>
+  <div id="auth-hint">Пароль хранится только в виде bcrypt-хэша</div>
 </div>
 
-<!-- ── App ── -->
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
       <div class="app-title">🔒 Secure Messenger</div>
       <div class="my-name" id="my-name-label"></div>
     </div>
-    <div id="users-list"><div style="padding:24px 16px;text-align:center;color:#555;font-size:13px">Нет пользователей онлайн</div></div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('chats')">💬 Чаты</div>
+      <div class="tab" onclick="switchTab('people')">👥 Люди</div>
+    </div>
+    <div class="tab-panel active" id="tab-chats">
+      <div class="empty-list" id="no-chats">Нет активных чатов</div>
+    </div>
+    <div class="tab-panel" id="tab-people">
+      <div class="empty-list" id="no-people">Загрузка...</div>
+    </div>
   </div>
+
   <div id="chat-area">
-    <div id="empty-state"><div class="icon">💬</div><div>Выберите собеседника</div></div>
+    <div id="empty-state"><div class="icon">💬</div><div>Выберите чат или найдите собеседника</div></div>
     <div id="chat-view">
       <div id="chat-header">
         <button class="back-btn" onclick="backToList()">←</button>
@@ -136,32 +153,23 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #16212e; colo
 <script>
 'use strict';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let ws, username, authToken, currentPeer;
+let ws, username, authToken, serverHost, currentPeer;
 let myKeyPair = null;
 let keySent = {};
-let peerPubKeys = {};   // peer -> Uint8Array public key
+let peerPubKeys = {};
 let chats = {};
 let unread = {};
 let onlineUsers = [];
+let allUsers = [];
 
 // ── Crypto ────────────────────────────────────────────────────────────────────
-function initCrypto() {
-  myKeyPair = nacl.box.keyPair();
-}
+function initCrypto() { myKeyPair = nacl.box.keyPair(); }
+function exportPub()  { return nacl.util.encodeBase64(myKeyPair.publicKey); }
 
-function exportPub() {
-  return nacl.util.encodeBase64(myKeyPair.publicKey);
-}
-
-// Fingerprint: SHA-256 of public key displayed as hex pairs
 async function keyFingerprint(pubKeyBytes) {
   const buf = await crypto.subtle.digest('SHA-256', pubKeyBytes);
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join(':')
-    .toUpperCase()
-    .substring(0, 47); // first 16 bytes = 47 chars
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0'))
+    .join(':').toUpperCase().substring(0,47);
 }
 
 function encryptMsg(text, theirPub) {
@@ -177,7 +185,7 @@ function decryptMsg(b64, theirPub) {
   const nonce = data.slice(0, nacl.box.nonceLength);
   const ct = data.slice(nacl.box.nonceLength);
   const pt = nacl.box.open(ct, nonce, theirPub, myKeyPair.secretKey);
-  if (!pt) throw new Error('decrypt failed — possible tampering');
+  if (!pt) throw new Error('decrypt failed');
   return nacl.util.encodeUTF8(pt);
 }
 
@@ -187,98 +195,159 @@ function getAuthFields() {
   const user   = document.getElementById('inp-user').value.trim();
   const pass   = document.getElementById('inp-pass').value;
   const err    = document.getElementById('auth-error');
-  if (!server || !user || !pass) { err.textContent = 'Заполните все поля'; return null; }
-  if (pass.length < 8) { err.textContent = 'Пароль минимум 8 символов'; return null; }
+  if (!server || !user || !pass) { err.textContent='Заполните все поля'; return null; }
+  if (pass.length < 8) { err.textContent='Пароль минимум 8 символов'; return null; }
   err.textContent = '';
-  return { server, user, pass };
+  return {server, user, pass};
 }
 
 async function doRegister() {
   const f = getAuthFields(); if (!f) return;
   document.getElementById('auth-error').textContent = 'Регистрация...';
   try {
-    const r = await fetch(`${location.protocol}//${f.server}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: f.user, password: f.pass })
+    const r = await fetch(`https://${f.server}/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:f.user, password:f.pass})
     });
     const data = await r.json();
-    if (!r.ok) { document.getElementById('auth-error').textContent = data.error || 'Ошибка'; return; }
-    authToken = data.token;
-    username  = f.user;
-    initCrypto();
-    openApp(f.server);
-  } catch(e) { document.getElementById('auth-error').textContent = 'Ошибка соединения'; }
+    if (!r.ok) { document.getElementById('auth-error').textContent = data.error||'Ошибка'; return; }
+    authToken = data.token; username = f.user; serverHost = f.server;
+    initCrypto(); openApp();
+  } catch(e) { document.getElementById('auth-error').textContent='Ошибка соединения'; }
 }
 
 async function doLogin() {
   const f = getAuthFields(); if (!f) return;
   document.getElementById('auth-error').textContent = 'Вход...';
   try {
-    const r = await fetch(`${location.protocol}//${f.server}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: f.user, password: f.pass })
+    const r = await fetch(`https://${f.server}/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:f.user, password:f.pass})
     });
     const data = await r.json();
-    if (!r.ok) { document.getElementById('auth-error').textContent = data.error || 'Неверные данные'; return; }
-    authToken = data.token;
-    username  = f.user;
-    initCrypto();
-    openApp(f.server);
-  } catch(e) { document.getElementById('auth-error').textContent = 'Ошибка соединения'; }
+    if (!r.ok) { document.getElementById('auth-error').textContent = data.error||'Неверные данные'; return; }
+    authToken = data.token; username = f.user; serverHost = f.server;
+    initCrypto(); openApp();
+  } catch(e) { document.getElementById('auth-error').textContent='Ошибка соединения'; }
 }
 
-// ── Connect WebSocket ─────────────────────────────────────────────────────────
-function openApp(server) {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${server}/ws?token=${encodeURIComponent(authToken)}`);
-  ws.onopen    = () => {};
-  ws.onmessage = (e) => onPacket(JSON.parse(e.data));
-  ws.onerror   = () => { document.getElementById('auth-error').textContent = 'Ошибка WebSocket'; };
-  ws.onclose   = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
+// ── Connect ───────────────────────────────────────────────────────────────────
+function openApp() {
+  const proto = location.protocol==='https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${serverHost}/ws?token=${encodeURIComponent(authToken)}`);
   ws.onopen = () => {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.add('show');
     document.getElementById('my-name-label').textContent = '🔵 ' + username;
+    loadPeople();
+    loadConversations();
   };
+  ws.onmessage = e => onPacket(JSON.parse(e.data));
+  ws.onerror   = () => { document.getElementById('auth-error').textContent='Ошибка WebSocket'; };
+  ws.onclose   = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
 }
 
-// ── Packets ───────────────────────────────────────────────────────────────────
-function onPacket(pkt) {
-  if (pkt.type === 'users')        { onlineUsers = pkt.users; renderUsers(onlineUsers); }
-  else if (pkt.type === 'key_exchange') onKeyExchange(pkt);
-  else if (pkt.type === 'message')      onMessage(pkt);
-  else if (pkt.type === 'error')        addSys('⚠️ ' + pkt.msg);
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='chats')||(i===1&&tab==='people')));
+  document.getElementById('tab-chats').classList.toggle('active', tab==='chats');
+  document.getElementById('tab-people').classList.toggle('active', tab==='people');
 }
 
-// ── Users list ────────────────────────────────────────────────────────────────
-function renderUsers(users) {
-  const list = document.getElementById('users-list');
-  list.innerHTML = '';
-  if (!users || !users.length) {
-    list.innerHTML = '<div style="padding:24px 16px;text-align:center;color:#555;font-size:13px">Нет пользователей онлайн</div>';
+// ── Load people ───────────────────────────────────────────────────────────────
+async function loadPeople() {
+  try {
+    const r = await fetch(`https://${serverHost}/users?token=${encodeURIComponent(authToken)}`);
+    const data = await r.json();
+    allUsers   = data.users || [];
+    onlineUsers = data.online || [];
+    renderPeople();
+  } catch(e) {}
+}
+
+function renderPeople() {
+  const panel = document.getElementById('tab-people');
+  panel.innerHTML = '';
+  if (!allUsers.length) {
+    panel.innerHTML = '<div class="empty-list">Нет зарегистрированных пользователей</div>';
     return;
   }
-  users.forEach(peer => {
-    const lastMsg = chats[peer]?.at(-1);
+  allUsers.forEach(peer => {
+    const isOnline = onlineUsers.includes(peer);
     const item = document.createElement('div');
-    item.className = 'user-item' + (peer === currentPeer ? ' active' : '');
-    item.onclick = () => openChat(peer);
+    item.className = 'list-item';
     item.innerHTML = `
-      <div class="user-avatar">${escHtml(peer[0].toUpperCase())}</div>
-      <div class="user-info">
-        <div class="user-name">${escHtml(peer)}</div>
-        <div class="user-last">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : 'Нажмите чтобы написать'}</div>
+      <div class="item-avatar">${escHtml(peer[0].toUpperCase())}${isOnline?'<div class="online-dot"></div>':''}
       </div>
-      ${(unread[peer]||0) > 0 ? `<span class="user-badge">${unread[peer]}</span>` : ''}
-    `;
-    list.appendChild(item);
+      <div class="item-info">
+        <div class="item-name">${escHtml(peer)}</div>
+        <div class="item-sub">${isOnline?'В сети':'Не в сети'}</div>
+      </div>`;
+    const btn = document.createElement('button');
+    btn.className = 'start-chat-btn';
+    btn.style.cssText = 'margin:0;width:auto;padding:6px 12px;font-size:12px;border-radius:6px';
+    btn.textContent = 'Написать';
+    btn.onclick = (e) => { e.stopPropagation(); startChat(peer); };
+    item.appendChild(btn);
+    panel.appendChild(item);
   });
 }
 
+function startChat(peer) {
+  switchTab('chats');
+  openChat(peer);
+}
+
+// ── Load conversations ────────────────────────────────────────────────────────
+async function loadConversations() {
+  try {
+    const r = await fetch(`https://${serverHost}/conversations?token=${encodeURIComponent(authToken)}`);
+    const data = await r.json();
+    renderConversations(data.conversations || [], data.online || []);
+  } catch(e) {}
+}
+
+function renderConversations(convs, online) {
+  onlineUsers = online;
+  const panel = document.getElementById('tab-chats');
+  panel.innerHTML = '';
+  if (!convs.length) {
+    panel.innerHTML = '<div class="empty-list">Нет активных чатов</div>';
+    return;
+  }
+  convs.forEach(c => {
+    const peer = c.peer;
+    const isOnline = online.includes(peer);
+    const lastMsg = chats[peer]?.at(-1);
+    const item = document.createElement('div');
+    item.className = 'list-item' + (peer===currentPeer?' active':'');
+    item.onclick = () => openChat(peer);
+    item.innerHTML = `
+      <div class="item-avatar">${escHtml(peer[0].toUpperCase())}${isOnline?'<div class="online-dot"></div>':''}
+      </div>
+      <div class="item-info">
+        <div class="item-name">${escHtml(peer)}</div>
+        <div class="item-sub">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : '🔒 зашифровано'}</div>
+      </div>
+      ${(unread[peer]||0)>0?`<span class="item-badge">${unread[peer]}</span>`:''}`;
+    panel.appendChild(item);
+  });
+}
+
+// ── Online updates ────────────────────────────────────────────────────────────
+function onPacket(pkt) {
+  if (pkt.type==='online') {
+    onlineUsers = pkt.users;
+    renderPeople();
+    loadConversations();
+  }
+  else if (pkt.type==='key_exchange') onKeyExchange(pkt);
+  else if (pkt.type==='message')      onMessage(pkt);
+  else if (pkt.type==='error')        addSys('⚠️ '+pkt.msg);
+}
+
 // ── Open chat ─────────────────────────────────────────────────────────────────
-function openChat(peer) {
+async function openChat(peer) {
   currentPeer = peer;
   unread[peer] = 0;
   if (!chats[peer]) chats[peer] = [];
@@ -290,26 +359,49 @@ function openChat(peer) {
 
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
-  chats[peer].forEach(m => _addBubble(m.sender, m.text, m.ts));
+
+  // Load encrypted history from server, decrypt client-side
+  await loadHistory(peer);
 
   if (!keySent[peer]) {
     keySent[peer] = true;
-    ws.send(JSON.stringify({ type: 'key_exchange', to: peer, pubkey: exportPub() }));
+    ws.send(JSON.stringify({type:'key_exchange', to:peer, pubkey:exportPub()}));
   }
+  if (peerPubKeys[peer]) { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
+  else setStatus('🔑 Обмен ключами...', false);
 
-  if (peerPubKeys[peer]) {
-    setStatus('🔒 Зашифровано (E2E)', true);
-    updateFingerprint(peer);
-  } else {
-    setStatus('🔑 Обмен ключами...', false);
-    document.getElementById('fingerprint-bar').textContent = '';
-  }
-
-  document.querySelectorAll('.user-item').forEach(el => {
-    el.classList.toggle('active', el.querySelector('.user-name')?.textContent === peer);
-  });
   msgs.scrollTop = msgs.scrollHeight;
   document.getElementById('msg-input').focus();
+  loadConversations();
+}
+
+async function loadHistory(peer) {
+  try {
+    const r = await fetch(`https://${serverHost}/history/${encodeURIComponent(peer)}?token=${encodeURIComponent(authToken)}`);
+    const data = await r.json();
+    // History is encrypted — we can only show it after key exchange
+    // Store raw for later decryption when key arrives
+    if (!chats[peer]) chats[peer] = [];
+    chats[peer]._pending = data.messages || [];
+    // If key already known — decrypt now
+    if (peerPubKeys[peer]) decryptPending(peer);
+  } catch(e) {}
+}
+
+function decryptPending(peer) {
+  const pending = chats[peer]._pending || [];
+  chats[peer]._pending = [];
+  const msgs = document.getElementById('messages');
+  pending.forEach(m => {
+    try {
+      const text = decryptMsg(m.ciphertext, peerPubKeys[peer]);
+      chats[peer].push({sender:m.sender, text, ts:m.ts});
+      if (peer===currentPeer) _addBubble(m.sender, text, m.ts);
+    } catch(e) {
+      // Can't decrypt history from previous session (PFS) — expected
+    }
+  });
+  if (peer===currentPeer) msgs.scrollTop = msgs.scrollHeight;
 }
 
 function backToList() {
@@ -323,108 +415,89 @@ function backToList() {
 async function onKeyExchange(pkt) {
   const peer = pkt.from;
   peerPubKeys[peer] = nacl.util.decodeBase64(pkt.pubkey);
-
-  if (peer === currentPeer) {
-    setStatus('🔒 Зашифровано (E2E)', true);
-    await updateFingerprint(peer);
-  }
-
-  if (!keySent[peer]) {
-    keySent[peer] = true;
-    ws.send(JSON.stringify({ type: 'key_exchange', to: peer, pubkey: exportPub() }));
-  }
+  if (peer===currentPeer) { setStatus('🔒 Зашифровано (E2E)', true); await updateFingerprint(peer); }
+  // Decrypt any pending history now that we have the key
+  if (chats[peer]?._pending?.length) decryptPending(peer);
+  if (!keySent[peer]) { keySent[peer]=true; ws.send(JSON.stringify({type:'key_exchange',to:peer,pubkey:exportPub()})); }
 }
 
 async function updateFingerprint(peer) {
   if (!peerPubKeys[peer]) return;
   const fp = await keyFingerprint(peerPubKeys[peer]);
-  const bar = document.getElementById('fingerprint-bar');
-  bar.textContent = '🔑 ' + fp;
+  document.getElementById('fingerprint-bar').textContent = '🔑 '+fp;
 }
 
 async function showFingerprint() {
-  if (!currentPeer || !peerPubKeys[currentPeer]) return;
+  if (!currentPeer||!peerPubKeys[currentPeer]) return;
   const myFp   = await keyFingerprint(myKeyPair.publicKey);
   const peerFp = await keyFingerprint(peerPubKeys[currentPeer]);
-  alert(
-    `Fingerprint верификация\n\nВаш ключ:\n${myFp}\n\nКлюч ${currentPeer}:\n${peerFp}\n\n` +
-    `Сравните ключ собеседника по другому каналу (голос/встреча).\nЕсли совпадает — соединение защищено от MITM.`
-  );
+  alert(`Fingerprint верификация\n\nВаш ключ:\n${myFp}\n\nКлюч ${currentPeer}:\n${peerFp}\n\nСравните по другому каналу. Если совпадает — MITM исключён.`);
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 function onMessage(pkt) {
   const peer = pkt.from;
-  if (!peerPubKeys[peer]) { addSys('⚠️ Получено сообщение без ключа'); return; }
+  if (!peerPubKeys[peer]) return;
   try {
     const text = decryptMsg(pkt.data, peerPubKeys[peer]);
-    const ts = Date.now() / 1000;
-    if (!chats[peer]) chats[peer] = [];
-    chats[peer].push({ sender: peer, text, ts });
-    if (peer === currentPeer) _addBubble(peer, text, ts);
-    else unread[peer] = (unread[peer] || 0) + 1;
-    renderUsers(onlineUsers);
-  } catch(e) {
-    addSys('❌ Ошибка расшифровки — сообщение повреждено или подделано');
-  }
+    const ts = Date.now()/1000;
+    if (!chats[peer]) chats[peer]=[];
+    chats[peer].push({sender:peer, text, ts});
+    if (peer===currentPeer) _addBubble(peer, text, ts);
+    else { unread[peer]=(unread[peer]||0)+1; }
+    loadConversations();
+  } catch(e) { addSys('❌ Ошибка расшифровки'); }
 }
 
 function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!text || !currentPeer) return;
+  if (!text||!currentPeer) return;
   if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
-
   const data = encryptMsg(text, peerPubKeys[currentPeer]);
-  ws.send(JSON.stringify({ type: 'message', to: currentPeer, data }));
-
-  const ts = Date.now() / 1000;
-  if (!chats[currentPeer]) chats[currentPeer] = [];
-  chats[currentPeer].push({ sender: username, text, ts });
+  ws.send(JSON.stringify({type:'message', to:currentPeer, data}));
+  const ts = Date.now()/1000;
+  if (!chats[currentPeer]) chats[currentPeer]=[];
+  chats[currentPeer].push({sender:username, text, ts});
   _addBubble(username, text, ts);
-  input.value = '';
-  input.style.height = 'auto';
+  input.value=''; input.style.height='auto';
+  loadConversations();
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// ── UI ────────────────────────────────────────────────────────────────────────
 function setStatus(text, secure) {
   const el = document.getElementById('enc-status');
-  el.textContent = text;
-  el.className = 'status' + (secure ? ' secure' : '');
+  el.textContent=text; el.className='status'+(secure?' secure':'');
 }
 
 function _addBubble(sender, text, ts) {
   const msgs = document.getElementById('messages');
-  const isMine = sender === username;
-  const time = new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isMine = sender===username;
+  const time = new Date(ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   const div = document.createElement('div');
-  div.className = 'bubble ' + (isMine ? 'mine' : 'theirs');
-  div.innerHTML = `${escHtml(text)}<div class="time">${time}</div>`;
+  div.className='bubble '+(isMine?'mine':'theirs');
+  div.innerHTML=`${escHtml(text)}<div class="time">${time}</div>`;
   msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
+  msgs.scrollTop=msgs.scrollHeight;
 }
 
 function addSys(text) {
-  const msgs = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = 'sys-msg';
-  div.textContent = text;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');
+  div.className='sys-msg'; div.textContent=text;
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
 }
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('inp-server').value = location.host;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
-
   const ta = document.getElementById('msg-input');
-  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
-  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+  ta.addEventListener('input', ()=>{ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; });
+  ta.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} });
 });
 </script>
 </body>
