@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+messenger.db
+*.key
+*.pem
+.env
