@@ -207,29 +207,49 @@ function renderUsers(users) {
   if (!list) return;
   list.innerHTML = '';
 
-  if (users.length === 0) {
-    const div = document.createElement('div');
-    div.id = 'no-users';
-    div.textContent = 'Нет пользователей онлайн';
-    list.appendChild(div);
+  if (!users || users.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:24px 16px;text-align:center;color:#555;font-size:13px';
+    empty.textContent = 'Нет пользователей онлайн';
+    list.appendChild(empty);
     return;
   }
 
   users.forEach(peer => {
-    const lastMsg = chats[peer] ? chats[peer][chats[peer].length - 1] : null;
-    const badge = (unread[peer] || 0) > 0 ? `<span class="user-badge">${unread[peer]}</span>` : '';
-    const div = document.createElement('div');
-    div.className = 'user-item' + (peer === currentPeer ? ' active' : '');
-    div.innerHTML = `
-      <div class="user-avatar">👤</div>
-      <div class="user-info">
-        <div class="user-name">${escHtml(peer)}</div>
-        <div class="user-last">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : 'Нажмите чтобы написать'}</div>
-      </div>
-      ${badge}
-    `;
-    div.onclick = () => openChat(peer);
-    list.appendChild(div);
+    const lastMsg = chats[peer] && chats[peer].length ? chats[peer][chats[peer].length - 1] : null;
+
+    const item = document.createElement('div');
+    item.className = 'user-item' + (peer === currentPeer ? ' active' : '');
+    item.onclick = () => openChat(peer);
+
+    const avatar = document.createElement('div');
+    avatar.className = 'user-avatar';
+    avatar.textContent = peer[0].toUpperCase();
+
+    const info = document.createElement('div');
+    info.className = 'user-info';
+
+    const name = document.createElement('div');
+    name.className = 'user-name';
+    name.textContent = peer;
+
+    const last = document.createElement('div');
+    last.className = 'user-last';
+    last.textContent = lastMsg ? lastMsg.text.substring(0, 30) : 'Нажмите чтобы написать';
+
+    info.appendChild(name);
+    info.appendChild(last);
+    item.appendChild(avatar);
+    item.appendChild(info);
+
+    if (unread[peer] > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'user-badge';
+      badge.textContent = unread[peer];
+      item.appendChild(badge);
+    }
+
+    list.appendChild(item);
   });
 }
 
