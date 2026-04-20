@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Secure Messenger</title>
+<link rel="manifest" href="/web/manifest.json">
+<meta name="theme-color" content="#16212e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Messenger">
 <!-- TweetNaCl — работает без HTTPS -->
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
@@ -431,6 +436,10 @@ function escHtml(s) {
 
 // Auto-resize textarea + parse invite link
 document.addEventListener('DOMContentLoaded', () => {
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/web/sw.js');
+  }
   document.getElementById('inp-server').value = location.host;
 
   // If opened via invite link ?invite=Alice — pre-fill peer name
