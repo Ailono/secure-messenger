@@ -120,6 +120,17 @@ def get_conversations(username: str) -> list:
     return [{'peer': r[0], 'last_ts': r[1]} for r in rows]
 
 
+def delete_conversation(user_a: str, user_b: str):
+    """Delete all messages between two users."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'DELETE FROM messages WHERE (sender=%s AND recipient=%s) OR (sender=%s AND recipient=%s)',
+                (user_a, user_b, user_b, user_a)
+            )
+        conn.commit()
+
+
 def purge_old(days: int = 30):
     cutoff = time.time() - days * 86400
     with _conn() as conn:

@@ -53,6 +53,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
 .item-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item-sub{font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .item-badge{background:#5b9bd5;color:white;border-radius:10px;font-size:11px;padding:2px 6px;flex-shrink:0}
+.del-btn{background:none;border:none;color:#555;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;border-radius:6px;transition:color .15s}
+.del-btn:hover{color:#f44336}
 .empty-list{padding:24px 16px;text-align:center;color:#555;font-size:13px}
 
 /* Chat area */
@@ -332,6 +334,19 @@ function startChat(peer) {
   openChat(peer);
 }
 
+async function deleteConversation(peer) {
+  if (!confirm(`Удалить переписку с ${peer}? Это действие необратимо.`)) return;
+  await fetch(`https://${serverHost}/conversation/${encodeURIComponent(peer)}?token=${encodeURIComponent(authToken)}`,
+    { method: 'DELETE' });
+  delete chats[peer];
+  delete peerPubKeys[peer];
+  delete keySent[peer];
+  if (currentPeer === peer) {
+    backToList();
+  }
+  loadConversations();
+}
+
 // ── Load conversations ────────────────────────────────────────────────────────
 async function loadConversations() {
   try {
@@ -363,7 +378,8 @@ function renderConversations(convs, online) {
         <div class="item-name">${escHtml(peer)}</div>
         <div class="item-sub">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : '🔒 зашифровано'}</div>
       </div>
-      ${(unread[peer]||0)>0?`<span class="item-badge">${unread[peer]}</span>`:''}`;
+      ${(unread[peer]||0)>0?`<span class="item-badge">${unread[peer]}</span>`:''}
+      <button class="del-btn" onclick="event.stopPropagation();deleteConversation('${escHtml(peer)}')" title="Удалить чат">🗑</button>`;
     panel.appendChild(item);
   });
 }

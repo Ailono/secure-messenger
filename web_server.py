@@ -116,6 +116,16 @@ async def handle_history(request: web.Request):
     return web.json_response({'messages': messages})
 
 
+async def handle_delete_conversation(request: web.Request):
+    try:
+        username = _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    peer = request.match_info['peer']
+    database.delete_conversation(username, peer)
+    return web.json_response({'ok': True})
+
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 
 async def broadcast_users():
@@ -189,6 +199,7 @@ app.router.add_post('/login',              handle_login)
 app.router.add_get('/users',               handle_users)
 app.router.add_get('/conversations',       handle_conversations)
 app.router.add_get('/history/{peer}',      handle_history)
+app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
 app.router.add_get('/ws',                  websocket_handler)
 app.router.add_static('/web',              WEB_DIR)
 
