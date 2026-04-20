@@ -139,7 +139,7 @@ async def websocket_handler(request: web.Request):
             # Force correct sender — client cannot spoof 'from'
             packet['from'] = username
 
-            if ptype in ('key_exchange', 'message'):
+            if ptype in ('key_exchange', 'key_ratchet', 'message'):
                 to = packet.get('to')
                 if to and to in clients:
                     # Store encrypted blob for offline delivery
