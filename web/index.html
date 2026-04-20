@@ -250,19 +250,35 @@ async function doLogin() {
 }
 
 // ── Connect ───────────────────────────────────────────────────────────────────
+let _reconnectTimer = null;
+
 function openApp() {
+  _connectWs();
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  document.getElementById('my-name-label').textContent = '🔵 ' + username;
+}
+
+function _connectWs() {
+  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
   const proto = location.protocol==='https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${serverHost}/ws?token=${encodeURIComponent(authToken)}`);
   ws.onopen = () => {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app').classList.add('show');
-    document.getElementById('my-name-label').textContent = '🔵 ' + username;
     loadPeople();
     loadConversations();
+    if (currentPeer) {
+      setStatus('🔒 Зашифровано (E2E)', true);
+      // Re-send key exchange after reconnect
+      keySent[currentPeer] = true;
+      ws.send(JSON.stringify({type:'key_exchange', to:currentPeer, pubkey:exportPub()}));
+    }
   };
   ws.onmessage = e => onPacket(JSON.parse(e.data));
-  ws.onerror   = () => { document.getElementById('auth-error').textContent='Ошибка WebSocket'; };
-  ws.onclose   = () => { if (currentPeer) setStatus('❌ Соединение потеряно', false); };
+  ws.onerror   = () => {};
+  ws.onclose   = () => {
+    if (currentPeer) setStatus('🔄 Переподключение...', false);
+    _reconnectTimer = setTimeout(_connectWs, 3000);
+  };
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -354,9 +370,14 @@ function renderConversations(convs, online) {
 
 // ── Online updates ────────────────────────────────────────────────────────────
 function onPacket(pkt) {
-  if (pkt.type==='online') {
+  if (pkt.type==='ack') {
+    // refresh lists after successful (re)connect
+    loadPeople();
+    loadConversations();
+  }
+  else if (pkt.type==='online') {
     onlineUsers = pkt.users;
-    renderPeople();
+    loadPeople();
     loadConversations();
   }
   else if (pkt.type==='key_exchange') onKeyExchange(pkt);
@@ -472,6 +493,7 @@ function sendMessage() {
   const text = input.value.trim();
   if (!text||!currentPeer) return;
   if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ ещё не согласован'); return; }
+  if (!ws || ws.readyState !== WebSocket.OPEN) { addSys('⚠️ Нет соединения, переподключение...'); return; }
   const data = encryptMsg(text, peerPubKeys[currentPeer]);
   ws.send(JSON.stringify({type:'message', to:currentPeer, data}));
   const ts = Date.now()/1000;
