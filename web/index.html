@@ -442,13 +442,15 @@ function _makeUserItem(peer, isOnline) {
       <div class="uname">${escHtml(peer)}</div>
       <div class="ustatus">${isOnline?'В сети':'Не в сети'}</div>
     </div>`;
-  div.onclick = () => {
-    closePeopleModal();
+  div.onclick = (e) => {
+    e.stopPropagation();
     const hasMessages = chats[peer] && Array.isArray(chats[peer]) && chats[peer].length > 0;
-    console.log('click peer:', peer, 'hasMessages:', hasMessages, 'chats[peer]:', chats[peer]);
+    console.log('click peer:', peer, 'hasMessages:', hasMessages);
     if (hasMessages) {
+      closePeopleModal();
       openChat(peer);
     } else {
+      closePeopleModal();
       showSendRequestModal(peer);
     }
   };
