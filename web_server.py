@@ -354,6 +354,13 @@ async def websocket_handler(request: web.Request):
                 to = packet.get('to')
                 if not to:
                     continue
+                # Only allow messaging between accepted contacts or to SecureBot
+                if to != SUPPORT_BOT and not database.are_contacts(username, to):
+                    await ws.send_str(json.dumps({
+                        'type': 'error',
+                        'msg': f'Сначала отправьте запрос на общение пользователю {to}'
+                    }))
+                    continue
                 msg_id = database.store_message(username, to, packet.get('data', ''))
                 packet['id'] = msg_id
                 # Confirm to sender: message stored
