@@ -133,6 +133,23 @@ emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#
 .vp-progress{height:100%;background:#5b9bd5;border-radius:2px;width:0%;transition:width .1s linear}
 .vp-time{font-size:11px;color:#6a8aaa;flex-shrink:0;min-width:32px}
 .bubble video.circle{width:200px;height:200px;border-radius:50%;object-fit:cover;display:block;margin-bottom:4px}
+
+/* Video circle player */
+.vc-wrap{position:relative;width:200px;height:200px;cursor:pointer;flex-shrink:0}
+.vc-wrap video{width:200px;height:200px;border-radius:50%;object-fit:cover;display:block}
+.vc-ring{position:absolute;top:0;left:0;width:200px;height:200px;pointer-events:none}
+.vc-ring circle{fill:none;stroke:#5b9bd5;stroke-width:4;stroke-linecap:round;stroke-dasharray:596;stroke-dashoffset:596;transform:rotate(-90deg);transform-origin:100px 100px;transition:stroke-dashoffset .1s linear}
+.vc-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(0,0,0,0.3);opacity:0;transition:opacity .2s}
+.vc-wrap:hover .vc-play-overlay{opacity:1}
+.vc-wrap.paused .vc-play-overlay{opacity:1}
+
+/* Live recording overlay */
+#live-record-overlay{display:none;position:fixed;inset:0;z-index:500;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(10,20,30,0.7);align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#live-record-overlay.show{display:flex}
+#live-preview{width:260px;height:260px;border-radius:50%;object-fit:cover;border:3px solid #c0392b;box-shadow:0 0 0 4px rgba(192,57,43,0.3)}
+.live-rec-dot{width:12px;height:12px;background:#c0392b;border-radius:50%;animation:pulse 1s infinite;display:inline-block;margin-right:6px}
+.live-rec-label{color:white;font-size:14px;display:flex;align-items:center}
+.live-stop-btn{padding:10px 24px;background:#c0392b;border:none;border-radius:20px;color:white;font-size:14px;cursor:pointer;border-radius:20px}
 #msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:hidden;}
 #msg-input:focus{border-color:#5b9bd5}
 #send-btn{width:44px;height:44px;background:#2b5278;border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -206,6 +223,13 @@ emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#
     <button id="btn-register" onclick="doRegister()">Регистрация</button>
   </div>
   <div id="auth-hint">Пароль хранится только в виде bcrypt-хэша</div>
+</div>
+
+<!-- Live video record overlay -->
+<div id="live-record-overlay">
+  <video id="live-preview" autoplay muted playsinline></video>
+  <div class="live-rec-label"><span class="live-rec-dot"></span> Идёт запись...</div>
+  <button class="live-stop-btn" onmouseup="stopRecording()" ontouchend="stopRecording()">⏹ Остановить</button>
 </div>
 
 <!-- People modal -->
@@ -970,7 +994,18 @@ function _addBubble(sender, text, ts, msgId, peer) {
       if (isImage) {
         contentHtml = `<img class="preview" src="${escHtml(parsed.url)}" onclick="window.open('${escHtml(parsed.url)}','_blank')" loading="lazy">`;
       } else if (isVideo && parsed.circle) {
-        contentHtml = `<video class="circle" src="${escHtml(parsed.url)}" controls playsinline></video>`;
+        const uid = 'v' + Math.random().toString(36).slice(2);
+        contentHtml = `
+          <div class="vc-wrap paused" id="${uid}" onclick="vcToggle('${uid}','${escHtml(parsed.url)}')">
+            <video id="${uid}-vid" src="${escHtml(parsed.url)}" playsinline preload="metadata"
+              style="width:200px;height:200px;border-radius:50%;object-fit:cover;display:block"></video>
+            <svg class="vc-ring" viewBox="0 0 200 200">
+              <circle id="${uid}-ring" cx="100" cy="100" r="95"/>
+            </svg>
+            <div class="vc-play-overlay">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>`;
       } else if (isVideo) {
         contentHtml = `<video class="preview" src="${escHtml(parsed.url)}" controls style="max-width:220px;border-radius:8px"></video>`;
       } else if (parsed.mime && parsed.mime.startsWith('audio/')) {
@@ -1010,6 +1045,38 @@ function addSys(text) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Video circle player ───────────────────────────────────────────────────────
+function vcToggle(uid, url) {
+  const wrap = document.getElementById(uid);
+  const vid  = document.getElementById(uid + '-vid');
+  const ring = document.getElementById(uid + '-ring');
+  if (!vid) return;
+  const circumference = 2 * Math.PI * 95; // r=95
+
+  if (!vid._init) {
+    vid._init = true;
+    vid.ontimeupdate = () => {
+      if (!vid.duration) return;
+      const pct = vid.currentTime / vid.duration;
+      const offset = circumference * (1 - pct);
+      if (ring) ring.style.strokeDashoffset = offset;
+    };
+    vid.onended = () => {
+      wrap.classList.add('paused');
+      if (ring) ring.style.strokeDashoffset = circumference;
+    };
+    if (ring) { ring.style.strokeDasharray = circumference; ring.style.strokeDashoffset = circumference; }
+  }
+
+  if (vid.paused) {
+    vid.play();
+    wrap.classList.remove('paused');
+  } else {
+    vid.pause();
+    wrap.classList.add('paused');
+  }
 }
 
 // ── Voice player ──────────────────────────────────────────────────────────────
@@ -1083,6 +1150,11 @@ async function startRecording() {
     _mediaRecorder.start();
     const btn = document.getElementById('mic-btn');
     btn.classList.add('recording');
+    if (_micMode === 'video') {
+      const preview = document.getElementById('live-preview');
+      preview.srcObject = stream;
+      document.getElementById('live-record-overlay').classList.add('show');
+    }
   } catch(e) {
     addSys('⚠️ Нет доступа к ' + (_micMode === 'video' ? 'камере' : 'микрофону'));
   }
@@ -1095,6 +1167,9 @@ async function stopRecording() {
   _mediaRecorder.stream.getTracks().forEach(t => t.stop());
   const btn = document.getElementById('mic-btn');
   btn.classList.remove('recording');
+  document.getElementById('live-record-overlay').classList.remove('show');
+  const preview = document.getElementById('live-preview');
+  if (preview.srcObject) { preview.srcObject.getTracks().forEach(t => t.stop()); preview.srcObject = null; }
   _mediaRecorder.onstop = async () => {
     const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
     const blob = new Blob(_audioChunks, {type: mimeType});
