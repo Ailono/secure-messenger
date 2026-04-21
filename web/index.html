@@ -669,8 +669,8 @@ async function openChat(peer) {
     ws.send(JSON.stringify({type:'key_exchange', to:peer, pubkey:exportPub()}));
   }
 
-  // If peer is offline, try fetching their stored public key
-  if (!peerPubKeys[peer]) {
+  // If peer is offline, try fetching their stored public key (skip for bot)
+  if (!peerPubKeys[peer] && peer !== 'SecureBot') {
     try {
       const r = await fetch(`https://${serverHost}/pubkey/${encodeURIComponent(peer)}?token=${encodeURIComponent(authToken)}`);
       if (r.ok) {
@@ -681,7 +681,7 @@ async function openChat(peer) {
     } catch(e) {}
   }
 
-  if (peerPubKeys[peer]) { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
+  if (peerPubKeys[peer] || peer === 'SecureBot') { setStatus('🔒 Зашифровано (E2E)', true); updateFingerprint(peer); }
   else setStatus('🔑 Ожидание ключа...', false);
 
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -712,6 +712,15 @@ function decryptPending(peer) {
   const msgs = document.getElementById('messages');
   pending.forEach(m => {
     try {
+      // Bot messages don't need decryption
+      if (m.sender === 'SecureBot') {
+        const parsed = JSON.parse(m.ciphertext);
+        if (parsed.bot) {
+          chats[peer].push({sender:'SecureBot', text: m.ciphertext, ts: m.ts});
+          if (peer === currentPeer) _addBubble('SecureBot', m.ciphertext, m.ts);
+          return;
+        }
+      }
       const text = decryptMsg(m.ciphertext, peerPubKeys[peer]);
       chats[peer].push({sender:m.sender, text, ts:m.ts});
       if (peer===currentPeer) _addBubble(m.sender, text, m.ts);
