@@ -201,7 +201,8 @@ def are_contacts(user_a: str, user_b: str) -> bool:
             return cur.fetchone() is not None
 
 
-def get_pending_messages(username: str) -> list:    """Get undelivered messages for user (sent while offline)."""
+def get_pending_messages(username: str) -> list:
+    """Get undelivered messages for user (sent while offline)."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
