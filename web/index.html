@@ -123,7 +123,9 @@ emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#
 #mic-btn:hover{background:#2a3a50}
 #mic-btn.recording{background:#c0392b;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+#mic-btn.video-mode{background:#1a3a5c}
 .bubble audio{display:block;max-width:220px;margin-bottom:4px}
+.bubble video.circle{width:200px;height:200px;border-radius:50%;object-fit:cover;display:block;margin-bottom:4px}
 #msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:hidden;}
 #msg-input:focus{border-color:#5b9bd5}
 #send-btn{width:44px;height:44px;background:#2b5278;border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -281,7 +283,7 @@ emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#
         <button id="attach-btn" onclick="toggleAttachMenu()" title="Прикрепить файл">📎</button>
         <button id="emoji-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
         <textarea id="msg-input" rows="1" placeholder="Сообщение..."></textarea>
-        <button id="mic-btn" title="Голосовое сообщение" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">🎤</button>
+        <button id="mic-btn" title="Клик — переключить режим, зажать — записать">🎤</button>
         <button id="send-btn" onclick="sendMessage()">➤</button>
       </div>
     </div>
@@ -952,6 +954,8 @@ function _addBubble(sender, text, ts, msgId, peer) {
       const isVideo = parsed.mime && parsed.mime.startsWith('video/');
       if (isImage) {
         contentHtml = `<img class="preview" src="${escHtml(parsed.url)}" onclick="window.open('${escHtml(parsed.url)}','_blank')" loading="lazy">`;
+      } else if (isVideo && parsed.circle) {
+        contentHtml = `<video class="circle" src="${escHtml(parsed.url)}" controls playsinline></video>`;
       } else if (isVideo) {
         contentHtml = `<video class="preview" src="${escHtml(parsed.url)}" controls style="max-width:220px;border-radius:8px"></video>`;
       } else if (parsed.mime && parsed.mime.startsWith('audio/')) {
@@ -988,41 +992,61 @@ function escHtml(s) {
 // ── Voice recording ───────────────────────────────────────────────────────────
 let _mediaRecorder = null;
 let _audioChunks = [];
+let _micMode = 'audio'; // 'audio' | 'video'
+
+function toggleMicMode() {
+  if (_mediaRecorder) return; // don't switch while recording
+  _micMode = _micMode === 'audio' ? 'video' : 'audio';
+  const btn = document.getElementById('mic-btn');
+  btn.textContent = _micMode === 'audio' ? '🎤' : '📹';
+  btn.classList.toggle('video-mode', _micMode === 'video');
+}
 
 async function startRecording() {
   if (_mediaRecorder) return;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    const constraints = _micMode === 'video'
+      ? {audio: true, video: {facingMode: 'user', width: 400, height: 400}}
+      : {audio: true};
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     _audioChunks = [];
-    _mediaRecorder = new MediaRecorder(stream);
+    const mimeType = _micMode === 'video' ? 'video/webm' : 'audio/webm';
+    _mediaRecorder = new MediaRecorder(stream, {mimeType});
     _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
     _mediaRecorder.start();
-    document.getElementById('mic-btn').classList.add('recording');
-    document.getElementById('mic-btn').textContent = '⏹';
+    const btn = document.getElementById('mic-btn');
+    btn.classList.add('recording');
+    btn.textContent = '⏹';
   } catch(e) {
-    addSys('⚠️ Нет доступа к микрофону');
+    addSys('⚠️ Нет доступа к ' + (_micMode === 'video' ? 'камере' : 'микрофону'));
   }
 }
 
 async function stopRecording() {
   if (!_mediaRecorder) return;
+  const mode = _micMode;
   _mediaRecorder.stop();
   _mediaRecorder.stream.getTracks().forEach(t => t.stop());
-  document.getElementById('mic-btn').classList.remove('recording');
-  document.getElementById('mic-btn').textContent = '🎤';
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('recording');
+  btn.textContent = mode === 'audio' ? '🎤' : '📹';
   _mediaRecorder.onstop = async () => {
-    const blob = new Blob(_audioChunks, {type: 'audio/webm'});
-    if (blob.size < 1000) { _mediaRecorder = null; return; } // too short
+    const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+    const blob = new Blob(_audioChunks, {type: mimeType});
+    if (blob.size < 1000) { _mediaRecorder = null; return; }
+    const ext = mode === 'video' ? 'webm' : 'webm';
+    const name = mode === 'video' ? `circle_${Date.now()}.${ext}` : `voice_${Date.now()}.${ext}`;
     const form = new FormData();
-    form.append('file', blob, `voice_${Date.now()}.webm`);
-    addSys('📤 Отправка голосового...');
+    form.append('file', blob, name);
+    addSys(`📤 Отправка ${mode === 'video' ? 'видео' : 'голосового'}...`);
     try {
       const r = await fetch(`https://${serverHost}/upload?token=${encodeURIComponent(authToken)}`, {
         method: 'POST', body: form
       });
       const data = await r.json();
       if (!r.ok) { addSys('❌ Ошибка отправки'); return; }
-      const payload = JSON.stringify({file:true, url:data.url, name:'Голосовое сообщение', mime:'audio/webm'});
+      const msgName = mode === 'video' ? 'Видео-кружок' : 'Голосовое сообщение';
+      const payload = JSON.stringify({file:true, url:data.url, name:msgName, mime:mimeType, circle: mode === 'video'});
       if (!peerPubKeys[currentPeer]) { addSys('⚠️ Ключ не согласован'); return; }
       const encrypted = encryptMsg(payload, peerPubKeys[currentPeer]);
       const tmpId = 'tmp_' + Date.now();
@@ -1108,6 +1132,33 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('inp-server').value = location.host.split('?')[0];
+
+  // Mic button: short click = toggle mode, long press = record
+  const micBtn = document.getElementById('mic-btn');
+  let _micPressTimer = null;
+  let _micPressed = false;
+
+  function micDown(e) {
+    e.preventDefault();
+    _micPressed = false;
+    _micPressTimer = setTimeout(() => {
+      _micPressed = true;
+      startRecording();
+    }, 300);
+  }
+  function micUp(e) {
+    e.preventDefault();
+    clearTimeout(_micPressTimer);
+    if (_micPressed) {
+      stopRecording();
+    } else {
+      toggleMicMode();
+    }
+  }
+  micBtn.addEventListener('mousedown', micDown);
+  micBtn.addEventListener('mouseup', micUp);
+  micBtn.addEventListener('touchstart', micDown, {passive:false});
+  micBtn.addEventListener('touchend', micUp, {passive:false});
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
   const ta = document.getElementById('msg-input');
   ta.addEventListener('input', ()=>{ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; });
