@@ -221,7 +221,16 @@ async def handle_fcm_token(request: web.Request):
     return web.json_response({'ok': True})
 
 
-async def handle_get_pubkey(request: web.Request):
+async def handle_admin_reset(request: web.Request):
+    """Temporary: clear all messages and chat requests."""
+    secret = request.rel_url.query.get('secret', '')
+    if secret != os.environ.get('ADMIN_SECRET', 'reset123'):
+        return web.json_response({'error': 'Forbidden'}, status=403)
+    with database._conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute('TRUNCATE messages, chat_requests')
+        conn.commit()
+    return web.json_response({'ok': True})
     """Get stored public key for a user (for offline messaging)."""
     try:
         _verify_token(request.rel_url.query.get('token', ''))
@@ -420,6 +429,7 @@ app.router.add_get('/conversations',          handle_conversations)
 app.router.add_get('/history/{peer}',         handle_history)
 app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
 app.router.add_get('/pubkey/{username}',       handle_get_pubkey)
+app.router.add_get('/admin/reset',             handle_admin_reset)
 app.router.add_post('/fcm_token',             handle_fcm_token)
 app.router.add_post('/chat_request',          handle_chat_request)
 app.router.add_post('/chat_request/respond',  handle_chat_request_respond)
