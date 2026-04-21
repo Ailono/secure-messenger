@@ -260,7 +260,8 @@ async def handle_chat_request(request: web.Request):
         return web.json_response({'status': 'already_contacts'})
     ok = database.send_chat_request(sender, recipient)
     if not ok:
-        return web.json_response({'status': 'already_sent'})
+        # Reset existing request and re-send bot message
+        database.update_chat_request(sender, recipient, 'pending')
     _bot_message(recipient,
         f'👤 Пользователь *{sender}* хочет начать с вами переписку. Принять запрос?')
     if recipient in clients:
