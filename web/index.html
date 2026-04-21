@@ -641,7 +641,11 @@ function onPacket(pkt) {
     loadPeople();
     loadConversations();
   }
-  else if (pkt.type==='chat_request')   showIncomingRequest(pkt.from);
+  else if (pkt.type==='chat_request') {
+    // Just notify — user will see the request in SecureBot chat
+    unread['SecureBot'] = (unread['SecureBot'] || 0) + 1;
+    loadConversations();
+  }
   else if (pkt.type==='request_accepted') { loadConversations(); addSys(`✅ ${pkt.by} принял ваш запрос`); }
   else if (pkt.type==='request_declined') { addSys(`❌ ${pkt.by} отклонил ваш запрос`); }
   else if (pkt.type==='key_exchange') onKeyExchange(pkt);
@@ -841,15 +845,22 @@ function _addBubble(sender, text, ts, msgId, peer) {
           btnA.className = 'btn-accept'; btnA.textContent = '✓ Принять';
           btnA.onclick = async () => {
             actions.remove();
-            _incFrom = reqSender;
-            await respondRequest('accept');
+            await fetch(`https://${serverHost}/chat_request/respond?token=${encodeURIComponent(authToken)}`, {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({from: reqSender, action: 'accept'})
+            });
+            loadConversations();
+            openChat(reqSender);
           };
           const btnD = document.createElement('button');
           btnD.className = 'btn-decline'; btnD.textContent = '✕ Отклонить';
           btnD.onclick = async () => {
             actions.remove();
-            _incFrom = reqSender;
-            await respondRequest('decline');
+            await fetch(`https://${serverHost}/chat_request/respond?token=${encodeURIComponent(authToken)}`, {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({from: reqSender, action: 'decline'})
+            });
+            loadConversations();
           };
           actions.appendChild(btnA); actions.appendChild(btnD);
           div.appendChild(actions);
