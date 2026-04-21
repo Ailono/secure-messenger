@@ -732,6 +732,7 @@ async function loadHistory(peer) {
     const msgs = data.messages || [];
     if (peer === 'SecureBot') {
       // Bot messages don't need decryption
+      chats[peer] = []; // reset to avoid duplicates
       msgs.forEach(m => {
         chats[peer].push({sender: m.sender, text: m.ciphertext, ts: m.ts});
         _addBubble(m.sender, m.ciphertext, m.ts);
@@ -806,8 +807,11 @@ function onMessage(pkt) {
     const ts = Date.now()/1000;
     if (!chats[peer]) chats[peer] = [];
     chats[peer].push({sender: peer, text: pkt.data, ts});
-    if (peer === currentPeer) _addBubble(peer, pkt.data, ts);
-    else { unread[peer] = (unread[peer]||0) + 1; }
+    if (peer === currentPeer) {
+      _addBubble(peer, pkt.data, ts);
+    } else {
+      unread[peer] = (unread[peer]||0) + 1;
+    }
     loadConversations();
     return;
   }
