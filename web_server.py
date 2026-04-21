@@ -302,6 +302,11 @@ async def handle_chat_request_respond(request: web.Request):
         _bot_message(sender, f'✅ Пользователь *{username}* принял ваш запрос!')
         if sender in clients:
             await clients[sender].send_str(json.dumps({'type': 'request_accepted', 'by': username}))
+            # Also deliver bot message via WS
+            payload = json.dumps({'bot': True, 'text': f'✅ Пользователь *{username}* принял ваш запрос!'})
+            await clients[sender].send_str(json.dumps({
+                'type': 'message', 'from': 'SecureBot', 'data': payload
+            }))
     else:
         _bot_message(username, f'❌ Вы отклонили запрос от *{sender}*.')
         _bot_message(sender, f'❌ Пользователь *{username}* отклонил ваш запрос.')
