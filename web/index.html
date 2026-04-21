@@ -444,8 +444,8 @@ function _makeUserItem(peer, isOnline) {
     </div>`;
   div.onclick = () => {
     closePeopleModal();
-    // Only open chat directly if there are actual messages
     const hasMessages = chats[peer] && Array.isArray(chats[peer]) && chats[peer].length > 0;
+    console.log('click peer:', peer, 'hasMessages:', hasMessages, 'chats[peer]:', chats[peer]);
     if (hasMessages) {
       openChat(peer);
     } else {
