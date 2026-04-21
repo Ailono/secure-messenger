@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#16212e">
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e0;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
@@ -103,7 +104,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
 .bubble .time{font-size:10px;color:#4a6a8a;text-align:right;margin-top:4px}
 .msg-status{margin-left:4px;color:#888;font-size:11px}
 .sys-msg{text-align:center;font-size:12px;color:#555;padding:4px 0}
-#input-area{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2d3d;border-top:1px solid #2a3a50;flex-shrink:0}
+#input-area{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2d3d;border-top:1px solid #2a3a50;flex-shrink:0;position:relative}
+#emoji-btn{width:36px;height:36px;background:none;border:none;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+#emoji-btn:hover{background:#2a3a50}
+#emoji-picker-wrap{position:absolute;bottom:60px;left:8px;z-index:300;display:none}
+#emoji-picker-wrap.show{display:block}
+emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#888;--indicator-color:#5b9bd5;--input-border-color:#2a3a50;--input-font-color:#e0e0e0;--input-placeholder-color:#555;--outline-color:#5b9bd5;--text-color:#e0e0e0;}
 #msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:hidden;}
 #msg-input:focus{border-color:#5b9bd5}
 #send-btn{width:44px;height:44px;background:#2b5278;border:none;border-radius:50%;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -251,6 +257,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
       </div>
       <div id="messages"></div>
       <div id="input-area">
+        <div id="emoji-picker-wrap"><emoji-picker></emoji-picker></div>
+        <button id="emoji-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
         <textarea id="msg-input" rows="1" placeholder="Сообщение..."></textarea>
         <button id="send-btn" onclick="sendMessage()">➤</button>
       </div>
@@ -935,7 +943,33 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Emoji picker ──────────────────────────────────────────────────────────────
+function toggleEmojiPicker() {
+  const wrap = document.getElementById('emoji-picker-wrap');
+  wrap.classList.toggle('show');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Emoji picker selection
+  document.addEventListener('emoji-click', e => {
+    const input = document.getElementById('msg-input');
+    const emoji = e.detail.unicode;
+    const pos = input.selectionStart;
+    input.value = input.value.slice(0, pos) + emoji + input.value.slice(pos);
+    input.selectionStart = input.selectionEnd = pos + emoji.length;
+    input.focus();
+    document.getElementById('emoji-picker-wrap').classList.remove('show');
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  // Close picker on outside click
+  document.addEventListener('click', e => {
+    const wrap = document.getElementById('emoji-picker-wrap');
+    if (!wrap.contains(e.target) && e.target.id !== 'emoji-btn') {
+      wrap.classList.remove('show');
+    }
+  });
+
   document.getElementById('inp-server').value = location.host.split('?')[0];
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
   const ta = document.getElementById('msg-input');
