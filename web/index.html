@@ -780,6 +780,16 @@ async function showFingerprint() {
 // ── Messages ──────────────────────────────────────────────────────────────────
 function onMessage(pkt) {
   const peer = pkt.from;
+  // Bot messages — no decryption needed
+  if (peer === 'SecureBot') {
+    const ts = Date.now()/1000;
+    if (!chats[peer]) chats[peer] = [];
+    chats[peer].push({sender: peer, text: pkt.data, ts});
+    if (peer === currentPeer) _addBubble(peer, pkt.data, ts);
+    else { unread[peer] = (unread[peer]||0) + 1; }
+    loadConversations();
+    return;
+  }
   if (!peerPubKeys[peer]) return;
   try {
     const text = decryptMsg(pkt.data, peerPubKeys[peer]);
