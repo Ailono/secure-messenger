@@ -432,7 +432,16 @@ function _makeUserItem(peer, isOnline) {
       <div class="uname">${escHtml(peer)}</div>
       <div class="ustatus">${isOnline?'В сети':'Не в сети'}</div>
     </div>`;
-  div.onclick = () => { closePeopleModal(); showSendRequestModal(peer); };
+  div.onclick = () => {
+    closePeopleModal();
+    // If already have conversation — open chat directly
+    const hasChat = chats[peer] || Object.keys(chats).includes(peer);
+    if (hasChat) {
+      openChat(peer);
+    } else {
+      showSendRequestModal(peer);
+    }
+  };
   return div;
 }
 
