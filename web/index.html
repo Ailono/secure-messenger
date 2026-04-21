@@ -125,6 +125,13 @@ emoji-picker{--background:#1a2535;--border-color:#2a3a50;--category-font-color:#
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 #mic-btn.video-mode{background:#1a3a5c}
 .bubble audio{display:block;max-width:220px;margin-bottom:4px}
+.voice-player{display:flex;align-items:center;gap:8px;min-width:180px;padding:2px 0}
+.vp-play{width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.vp-play:hover{background:rgba(255,255,255,0.25)}
+.vp-play.playing svg polygon{points:"6,19 6,5 10,5 10,19 14,5 14,19 18,19 18,5"}
+.vp-bar{flex:1;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;cursor:pointer;position:relative}
+.vp-progress{height:100%;background:#5b9bd5;border-radius:2px;width:0%;transition:width .1s linear}
+.vp-time{font-size:11px;color:#6a8aaa;flex-shrink:0;min-width:32px}
 .bubble video.circle{width:200px;height:200px;border-radius:50%;object-fit:cover;display:block;margin-bottom:4px}
 #msg-input{flex:1;padding:10px 16px;background:#16212e;border:1px solid #2a3a50;border-radius:22px;color:#e0e0e0;font-size:15px;outline:none;resize:none;max-height:120px;overflow-y:hidden;}
 #msg-input:focus{border-color:#5b9bd5}
@@ -967,7 +974,15 @@ function _addBubble(sender, text, ts, msgId, peer) {
       } else if (isVideo) {
         contentHtml = `<video class="preview" src="${escHtml(parsed.url)}" controls style="max-width:220px;border-radius:8px"></video>`;
       } else if (parsed.mime && parsed.mime.startsWith('audio/')) {
-        contentHtml = `<audio controls src="${escHtml(parsed.url)}" style="max-width:220px"></audio>`;
+        const uid = 'a' + Math.random().toString(36).slice(2);
+        contentHtml = `
+          <div class="voice-player" id="${uid}">
+            <button class="vp-play" onclick="vpToggle('${uid}','${escHtml(parsed.url)}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#c8d8e8"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+            <div class="vp-bar"><div class="vp-progress" id="${uid}-prog"></div></div>
+            <span class="vp-time" id="${uid}-time">0:00</span>
+          </div>`;
       } else {
         contentHtml = `<div class="file-info">📄 <a href="${escHtml(parsed.url)}" target="_blank" style="color:#5b9bd5">${escHtml(parsed.name)}</a></div>`;
       }
@@ -995,6 +1010,45 @@ function addSys(text) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Voice player ──────────────────────────────────────────────────────────────
+const _vpAudios = {};
+
+function vpToggle(uid, url) {
+  if (!_vpAudios[uid]) {
+    _vpAudios[uid] = new Audio(url);
+    _vpAudios[uid].ontimeupdate = () => {
+      const a = _vpAudios[uid];
+      const pct = a.duration ? (a.currentTime / a.duration * 100) : 0;
+      const el = document.getElementById(uid + '-prog');
+      const tm = document.getElementById(uid + '-time');
+      if (el) el.style.width = pct + '%';
+      if (tm) tm.textContent = _vpFmt(a.currentTime);
+    };
+    _vpAudios[uid].onended = () => {
+      const btn = document.querySelector(`#${uid} .vp-play svg polygon`);
+      if (btn) btn.setAttribute('points', '5,3 19,12 5,21');
+      const el = document.getElementById(uid + '-prog');
+      if (el) el.style.width = '0%';
+    };
+  }
+  const a = _vpAudios[uid];
+  const btn = document.querySelector(`#${uid} .vp-play svg polygon`);
+  if (a.paused) {
+    // Pause all others
+    Object.values(_vpAudios).forEach(x => { if (x !== a) x.pause(); });
+    a.play();
+    if (btn) btn.setAttribute('points', '6,19 6,5 10,5 10,19 14,5 14,19 18,19 18,5');
+  } else {
+    a.pause();
+    if (btn) btn.setAttribute('points', '5,3 19,12 5,21');
+  }
+}
+
+function _vpFmt(s) {
+  const m = Math.floor(s / 60);
+  return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 }
 
 // ── Voice recording ───────────────────────────────────────────────────────────
