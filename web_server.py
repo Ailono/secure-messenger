@@ -392,7 +392,9 @@ async def websocket_handler(request: web.Request):
 # ── Static ────────────────────────────────────────────────────────────────────
 
 async def index(request):
-    return web.FileResponse(WEB_DIR / 'index.html')
+    resp = web.FileResponse(WEB_DIR / 'index.html')
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
