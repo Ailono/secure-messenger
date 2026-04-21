@@ -1007,7 +1007,20 @@ function _addBubble(sender, text, ts, msgId, peer) {
             </div>
           </div>`;
       } else if (isVideo) {
-        contentHtml = `<video class="preview" src="${escHtml(parsed.url)}" controls style="max-width:220px;border-radius:8px"></video>`;
+        const uid = 'vp' + Math.random().toString(36).slice(2);
+        contentHtml = `
+          <div class="vp-video-wrap" id="${uid}">
+            <video id="${uid}-vid" src="${escHtml(parsed.url)}" playsinline preload="metadata"
+              style="max-width:220px;border-radius:8px;display:block;cursor:pointer"
+              onclick="vpVideoToggle('${uid}')"></video>
+            <div class="voice-player" style="margin-top:4px">
+              <button class="vp-play" onclick="vpVideoToggle('${uid}')">
+                <svg id="${uid}-icon" width="16" height="16" viewBox="0 0 24 24" fill="#c8d8e8"><polygon points="5,3 19,12 5,21"/></svg>
+              </button>
+              <div class="vp-bar" onclick="vpVideoSeek('${uid}',event)"><div class="vp-progress" id="${uid}-prog"></div></div>
+              <span class="vp-time" id="${uid}-time">0:00</span>
+            </div>
+          </div>`;
       } else if (parsed.mime && parsed.mime.startsWith('audio/')) {
         const uid = 'a' + Math.random().toString(36).slice(2);
         contentHtml = `
@@ -1045,6 +1058,40 @@ function addSys(text) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function vpVideoToggle(uid) {
+  const vid = document.getElementById(uid + '-vid');
+  const icon = document.getElementById(uid + '-icon');
+  if (!vid) return;
+  if (!vid._init) {
+    vid._init = true;
+    vid.ontimeupdate = () => {
+      const pct = vid.duration ? (vid.currentTime / vid.duration * 100) : 0;
+      const el = document.getElementById(uid + '-prog');
+      const tm = document.getElementById(uid + '-time');
+      if (el) el.style.width = pct + '%';
+      if (tm) tm.textContent = _vpFmt(vid.currentTime);
+    };
+    vid.onended = () => {
+      if (icon) icon.setAttribute('points', '5,3 19,12 5,21');
+    };
+  }
+  if (vid.paused) {
+    vid.play();
+    if (icon) icon.setAttribute('points', '6,19 6,5 10,5 10,19 14,5 14,19 18,19 18,5');
+  } else {
+    vid.pause();
+    if (icon) icon.setAttribute('points', '5,3 19,12 5,21');
+  }
+}
+
+function vpVideoSeek(uid, e) {
+  const vid = document.getElementById(uid + '-vid');
+  const bar = e.currentTarget;
+  if (!vid || !vid.duration) return;
+  const pct = e.offsetX / bar.offsetWidth;
+  vid.currentTime = pct * vid.duration;
 }
 
 // ── Video circle player ───────────────────────────────────────────────────────
