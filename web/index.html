@@ -183,8 +183,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
 <div id="people-modal" onclick="if(event.target===this)closePeopleModal()">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>👥 Пользователи</h3>
+      <h3>🔍 Найти пользователя</h3>
       <button class="modal-close" onclick="closePeopleModal()">✕</button>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid #2a3a50">
+      <input id="people-search" placeholder="Поиск по имени..." oninput="renderPeopleModal()"
+        style="width:100%;padding:8px 12px;background:#16212e;border:1px solid #2a3a50;border-radius:8px;color:#e0e0e0;font-size:14px;outline:none">
     </div>
     <div class="modal-body" id="people-list"></div>
   </div>
@@ -396,20 +400,25 @@ function openProfile() {
 // ── People modal ──────────────────────────────────────────────────────────────
 function openPeopleModal() {
   document.getElementById('people-modal').classList.add('show');
+  const s = document.getElementById('people-search');
+  if (s) s.value = '';
   renderPeopleModal();
+  setTimeout(() => { if (s) s.focus(); }, 100);
 }
 function closePeopleModal() {
   document.getElementById('people-modal').classList.remove('show');
 }
 
 function renderPeopleModal() {
+  const query = (document.getElementById('people-search')?.value || '').toLowerCase().trim();
   const list = document.getElementById('people-list');
   list.innerHTML = '';
-  const online  = allUsers.filter(u => onlineUsers.includes(u));
-  const offline = allUsers.filter(u => !onlineUsers.includes(u));
+  const filtered = allUsers.filter(u => !query || u.toLowerCase().includes(query));
+  const online  = filtered.filter(u => onlineUsers.includes(u));
+  const offline = filtered.filter(u => !onlineUsers.includes(u));
 
-  if (!allUsers.length) {
-    list.innerHTML = '<div style="padding:24px;text-align:center;color:#555">Нет пользователей</div>';
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:#555">Пользователи не найдены</div>';
     return;
   }
   if (online.length) {
