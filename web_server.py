@@ -231,6 +231,9 @@ async def handle_admin_reset(request: web.Request):
             cur.execute('TRUNCATE messages, chat_requests')
         conn.commit()
     return web.json_response({'ok': True})
+
+
+async def handle_get_pubkey(request: web.Request):
     """Get stored public key for a user (for offline messaging)."""
     try:
         _verify_token(request.rel_url.query.get('token', ''))
