@@ -402,8 +402,8 @@ function openPeopleModal() {
   document.getElementById('people-modal').classList.add('show');
   const s = document.getElementById('people-search');
   if (s) s.value = '';
-  // Fetch fresh data then render
-  loadPeople().then(() => renderPeopleModal());
+  renderPeopleModal(); // render immediately with current data
+  loadPeople().then(() => renderPeopleModal()); // then refresh
   setTimeout(() => { if (s) s.focus(); }, 100);
 }
 function closePeopleModal() {
