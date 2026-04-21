@@ -113,6 +113,48 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
 .start-chat-btn{margin:12px 16px;padding:10px;background:#2b5278;border:none;border-radius:8px;color:white;font-size:14px;cursor:pointer;width:calc(100% - 32px)}
 .start-chat-btn:hover{background:#3a6a9a}
 
+/* People modal */
+#people-modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.6);align-items:center;justify-content:center}
+#people-modal.show{display:flex}
+.modal-box{background:#1a2535;border:1px solid #2a3a50;border-radius:16px;width:340px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #2a3a50}
+.modal-header h3{color:#e0e0e0;font-size:16px;margin:0}
+.modal-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0}
+.modal-close:hover{color:#e0e0e0}
+.modal-body{overflow-y:auto;flex:1;padding:8px 0}
+.modal-section{padding:8px 16px 4px;font-size:11px;color:#5b9bd5;text-transform:uppercase;letter-spacing:1px}
+.modal-user{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;transition:background .15s}
+.modal-user:hover{background:#1e2d3d}
+.modal-user .avatar{width:38px;height:38px;background:#2b5278;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;flex-shrink:0;position:relative}
+.modal-user .avatar .dot{position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:#4caf50;border-radius:50%;border:2px solid #1a2535}
+.modal-user .uname{color:#e0e0e0;font-size:14px;font-weight:500}
+.modal-user .ustatus{color:#888;font-size:12px}
+
+/* Request confirm modal */
+#req-modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);align-items:center;justify-content:center}
+#req-modal.show{display:flex}
+.req-box{background:#1a2535;border:1px solid #2a3a50;border-radius:16px;width:300px;padding:24px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.req-box .req-avatar{width:64px;height:64px;background:#2b5278;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;margin:0 auto 12px}
+.req-box h3{color:#e0e0e0;margin:0 0 8px;font-size:16px}
+.req-box p{color:#888;font-size:13px;margin:0 0 20px;line-height:1.5}
+.req-btns{display:flex;gap:10px}
+.req-btns button{flex:1;padding:10px;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-weight:500}
+.req-btn-send{background:#2b5278;color:white}
+.req-btn-send:hover{background:#3a6a9a}
+.req-btn-cancel{background:#1e2d3d;color:#888;border:1px solid #2a3a50!important}
+
+/* Incoming request modal */
+#inc-modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);align-items:center;justify-content:center}
+#inc-modal.show{display:flex}
+
+/* Bot messages */
+.bubble.bot{align-self:center;background:#16212e;border:1px solid #2a3a50;border-radius:12px;max-width:85%;text-align:center;color:#aaa}
+.bubble.bot .bot-actions{display:flex;gap:8px;margin-top:10px;justify-content:center}
+.bubble.bot .bot-actions button{padding:7px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500}
+.btn-accept{background:#2b5278;color:white}
+.btn-accept:hover{background:#3a6a9a}
+.btn-decline{background:#1e2d3d;color:#888;border:1px solid #2a3a50}
+
 @media(max-width:600px){
   #sidebar{width:100%;position:absolute;top:0;left:0;bottom:0;z-index:10}
   #sidebar.hidden{display:none}
@@ -137,21 +179,57 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
   <div id="auth-hint">Пароль хранится только в виде bcrypt-хэша</div>
 </div>
 
+<!-- People modal -->
+<div id="people-modal" onclick="if(event.target===this)closePeopleModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>👥 Пользователи</h3>
+      <button class="modal-close" onclick="closePeopleModal()">✕</button>
+    </div>
+    <div class="modal-body" id="people-list"></div>
+  </div>
+</div>
+
+<!-- Send request confirm modal -->
+<div id="req-modal" onclick="if(event.target===this)closeReqModal()">
+  <div class="req-box">
+    <div class="req-avatar" id="req-avatar"></div>
+    <h3 id="req-title"></h3>
+    <p id="req-desc"></p>
+    <div class="req-btns">
+      <button class="req-btn-send" id="req-confirm-btn">Отправить запрос</button>
+      <button class="req-btn-cancel" onclick="closeReqModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incoming request modal -->
+<div id="inc-modal" onclick="if(event.target===this)closeIncModal()">
+  <div class="req-box">
+    <div class="req-avatar" id="inc-avatar"></div>
+    <h3 id="inc-title"></h3>
+    <p id="inc-desc"></p>
+    <div class="req-btns">
+      <button class="btn-accept" id="inc-accept-btn">✓ Принять</button>
+      <button class="btn-decline" id="inc-decline-btn">✕ Отклонить</button>
+    </div>
+  </div>
+</div>
+
 <div id="app">
   <div id="sidebar">
-    <div id="sidebar-header">
-      <div class="app-title">🔒 Secure Messenger</div>
-      <div class="my-name" id="my-name-label"></div>
+    <div id="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #2a3a50">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="my-avatar-btn" onclick="openProfile()" style="width:36px;height:36px;background:#2b5278;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;cursor:pointer;color:white;flex-shrink:0" title="Профиль"></div>
+        <div>
+          <div class="app-title">🔒 Secure Messenger</div>
+          <div class="my-name" id="my-name-label"></div>
+        </div>
+      </div>
+      <button onclick="openPeopleModal()" title="Новый чат" style="width:34px;height:34px;background:#2b5278;border:none;border-radius:50%;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">＋</button>
     </div>
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('chats')">💬 Чаты</div>
-      <div class="tab" onclick="switchTab('people')">👥 Люди</div>
-    </div>
-    <div class="tab-panel active" id="tab-chats">
+    <div class="tab-panel active" id="tab-chats" style="display:flex;flex:1;overflow-y:auto;flex-direction:column">
       <div class="empty-list" id="no-chats">Нет активных чатов</div>
-    </div>
-    <div class="tab-panel" id="tab-people">
-      <div class="empty-list" id="no-people">Загрузка...</div>
     </div>
   </div>
 
@@ -284,6 +362,8 @@ function openApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').classList.add('show');
   document.getElementById('my-name-label').textContent = '🔵 ' + username;
+  const av = document.getElementById('my-avatar-btn');
+  if (av) av.textContent = username[0].toUpperCase();
 }
 
 function _connectWs() {
@@ -308,7 +388,117 @@ function _connectWs() {
   };
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
+// ── Profile (placeholder) ─────────────────────────────────────────────────────
+function openProfile() {
+  alert(`👤 Профиль\n\nПользователь: ${username}\n\nНастройки аккаунта будут доступны в следующей версии.`);
+}
+
+// ── People modal ──────────────────────────────────────────────────────────────
+function openPeopleModal() {
+  document.getElementById('people-modal').classList.add('show');
+  renderPeopleModal();
+}
+function closePeopleModal() {
+  document.getElementById('people-modal').classList.remove('show');
+}
+
+function renderPeopleModal() {
+  const list = document.getElementById('people-list');
+  list.innerHTML = '';
+  const online  = allUsers.filter(u => onlineUsers.includes(u));
+  const offline = allUsers.filter(u => !onlineUsers.includes(u));
+
+  if (!allUsers.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:#555">Нет пользователей</div>';
+    return;
+  }
+  if (online.length) {
+    list.innerHTML += '<div class="modal-section">🟢 Онлайн</div>';
+    online.forEach(u => list.appendChild(_makeUserItem(u, true)));
+  }
+  if (offline.length) {
+    list.innerHTML += '<div class="modal-section">⚫ Не в сети</div>';
+    offline.forEach(u => list.appendChild(_makeUserItem(u, false)));
+  }
+}
+
+function _makeUserItem(peer, isOnline) {
+  const div = document.createElement('div');
+  div.className = 'modal-user';
+  div.innerHTML = `
+    <div class="avatar">${escHtml(peer[0].toUpperCase())}${isOnline?'<div class="dot"></div>':''}
+    </div>
+    <div>
+      <div class="uname">${escHtml(peer)}</div>
+      <div class="ustatus">${isOnline?'В сети':'Не в сети'}</div>
+    </div>`;
+  div.onclick = () => { closePeopleModal(); showSendRequestModal(peer); };
+  return div;
+}
+
+// ── Send request modal ────────────────────────────────────────────────────────
+let _reqTarget = null;
+function showSendRequestModal(peer) {
+  _reqTarget = peer;
+  document.getElementById('req-avatar').textContent = peer[0].toUpperCase();
+  document.getElementById('req-title').textContent = peer;
+  document.getElementById('req-desc').textContent =
+    `Отправить запрос на переписку пользователю ${peer}?`;
+  document.getElementById('req-confirm-btn').onclick = sendChatRequest;
+  document.getElementById('req-modal').classList.add('show');
+}
+function closeReqModal() {
+  document.getElementById('req-modal').classList.remove('show');
+  _reqTarget = null;
+}
+
+async function sendChatRequest() {
+  if (!_reqTarget) return;
+  const peer = _reqTarget;
+  closeReqModal();
+  const r = await fetch(`https://${serverHost}/chat_request?token=${encodeURIComponent(authToken)}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({to: peer})
+  });
+  const data = await r.json();
+  if (data.status === 'sent') {
+    addSys(`📨 Запрос отправлен пользователю ${peer}`);
+  } else if (data.status === 'already_contacts') {
+    openChat(peer);
+  } else if (data.status === 'already_sent') {
+    addSys(`⏳ Запрос уже отправлен, ожидайте ответа`);
+  }
+}
+
+// ── Incoming request modal ────────────────────────────────────────────────────
+let _incFrom = null;
+function showIncomingRequest(from) {
+  _incFrom = from;
+  document.getElementById('inc-avatar').textContent = from[0].toUpperCase();
+  document.getElementById('inc-title').textContent = from;
+  document.getElementById('inc-desc').textContent =
+    `Пользователь ${from} хочет начать с вами переписку`;
+  document.getElementById('inc-accept-btn').onclick = () => respondRequest('accept');
+  document.getElementById('inc-decline-btn').onclick = () => respondRequest('decline');
+  document.getElementById('inc-modal').classList.add('show');
+}
+function closeIncModal() {
+  document.getElementById('inc-modal').classList.remove('show');
+  _incFrom = null;
+}
+
+async function respondRequest(action) {
+  const from = _incFrom;
+  closeIncModal();
+  await fetch(`https://${serverHost}/chat_request/respond?token=${encodeURIComponent(authToken)}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({from, action})
+  });
+  if (action === 'accept') openChat(from);
+  loadConversations();
+}
+
+// ── Tabs (legacy, kept for compat) ────────────────────────────────────────────
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='chats')||(i===1&&tab==='people')));
   document.getElementById('tab-chats').classList.toggle('active', tab==='chats');
@@ -420,6 +610,9 @@ function onPacket(pkt) {
     loadPeople();
     loadConversations();
   }
+  else if (pkt.type==='chat_request')   showIncomingRequest(pkt.from);
+  else if (pkt.type==='request_accepted') { loadConversations(); addSys(`✅ ${pkt.by} принял ваш запрос`); }
+  else if (pkt.type==='request_declined') { addSys(`❌ ${pkt.by} отклонил ваш запрос`); }
   else if (pkt.type==='key_exchange') onKeyExchange(pkt);
   else if (pkt.type==='message')      onMessage(pkt);
   else if (pkt.type==='status') {
@@ -585,7 +778,49 @@ function setStatus(text, secure) {
 
 function _addBubble(sender, text, ts, msgId, peer) {
   const msgs = document.getElementById('messages');
-  const isMine = sender===username;
+  const isMine = sender === username;
+  const isBot  = sender === 'SecureBot';
+
+  // Bot message — try parse JSON
+  if (isBot) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.bot) {
+        const div = document.createElement('div');
+        div.className = 'bubble bot';
+        const txt = parsed.text.replace(/\*(.*?)\*/g, '<b>$1</b>');
+        // Check if it's a request message (has accept/decline)
+        const isRequest = parsed.text.includes('хочет начать');
+        const senderMatch = parsed.text.match(/Пользователь \*(.+?)\*/);
+        const reqSender = senderMatch ? senderMatch[1] : null;
+        div.innerHTML = `<div>${txt}</div>`;
+        if (isRequest && reqSender) {
+          const actions = document.createElement('div');
+          actions.className = 'bot-actions';
+          const btnA = document.createElement('button');
+          btnA.className = 'btn-accept'; btnA.textContent = '✓ Принять';
+          btnA.onclick = async () => {
+            actions.remove();
+            _incFrom = reqSender;
+            await respondRequest('accept');
+          };
+          const btnD = document.createElement('button');
+          btnD.className = 'btn-decline'; btnD.textContent = '✕ Отклонить';
+          btnD.onclick = async () => {
+            actions.remove();
+            _incFrom = reqSender;
+            await respondRequest('decline');
+          };
+          actions.appendChild(btnA); actions.appendChild(btnD);
+          div.appendChild(actions);
+        }
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+        return;
+      }
+    } catch(e) {}
+  }
+
   const time = new Date(ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   const div = document.createElement('div');
   div.className='bubble '+(isMine?'mine':'theirs');

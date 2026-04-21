@@ -234,6 +234,67 @@ async def handle_get_pubkey(request: web.Request):
     return web.json_response({'pubkey': pubkey})
 
 
+# ── Chat requests ─────────────────────────────────────────────────────────────
+
+SUPPORT_BOT = 'SecureBot'
+
+
+def _bot_message(recipient: str, text: str):
+    import json as _json
+    payload = _json.dumps({'bot': True, 'text': text})
+    database.store_message(SUPPORT_BOT, recipient, payload)
+
+
+async def handle_chat_request(request: web.Request):
+    try:
+        sender = _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    body = await request.json()
+    recipient = body.get('to', '').strip()
+    if not recipient or recipient == sender:
+        return web.json_response({'error': 'Invalid recipient'}, status=400)
+    if not database.get_user_hash(recipient):
+        return web.json_response({'error': 'User not found'}, status=404)
+    if database.are_contacts(sender, recipient):
+        return web.json_response({'status': 'already_contacts'})
+    ok = database.send_chat_request(sender, recipient)
+    if not ok:
+        return web.json_response({'status': 'already_sent'})
+    _bot_message(recipient,
+        f'👤 Пользователь *{sender}* хочет начать с вами переписку. Принять запрос?')
+    if recipient in clients:
+        await clients[recipient].send_str(json.dumps({
+            'type': 'chat_request', 'from': sender,
+        }))
+    return web.json_response({'status': 'sent'})
+
+
+async def handle_chat_request_respond(request: web.Request):
+    try:
+        username = _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    body = await request.json()
+    sender = body.get('from', '').strip()
+    action = body.get('action', '')
+    if action not in ('accept', 'decline'):
+        return web.json_response({'error': 'Invalid action'}, status=400)
+    status = 'accepted' if action == 'accept' else 'declined'
+    database.update_chat_request(sender, username, status)
+    if action == 'accept':
+        _bot_message(username, f'✅ Вы приняли запрос от *{sender}*. Можете начать общение!')
+        _bot_message(sender, f'✅ Пользователь *{username}* принял ваш запрос!')
+        if sender in clients:
+            await clients[sender].send_str(json.dumps({'type': 'request_accepted', 'by': username}))
+    else:
+        _bot_message(username, f'❌ Вы отклонили запрос от *{sender}*.')
+        _bot_message(sender, f'❌ Пользователь *{username}* отклонил ваш запрос.')
+        if sender in clients:
+            await clients[sender].send_str(json.dumps({'type': 'request_declined', 'by': username}))
+    return web.json_response({'status': status})
+
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 
 async def broadcast_users():
@@ -348,6 +409,8 @@ app.router.add_get('/history/{peer}',         handle_history)
 app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
 app.router.add_get('/pubkey/{username}',       handle_get_pubkey)
 app.router.add_post('/fcm_token',             handle_fcm_token)
+app.router.add_post('/chat_request',          handle_chat_request)
+app.router.add_post('/chat_request/respond',  handle_chat_request_respond)
 app.router.add_get('/ws',                     websocket_handler)
 app.router.add_static('/web',                 WEB_DIR)
 

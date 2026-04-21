@@ -39,8 +39,14 @@ def init_db():
                 )
             ''')
             cur.execute('''
-                CREATE INDEX IF NOT EXISTS idx_messages_pair
-                ON messages (sender, recipient)
+                CREATE TABLE IF NOT EXISTS chat_requests (
+                    id         SERIAL PRIMARY KEY,
+                    sender     TEXT NOT NULL,
+                    recipient  TEXT NOT NULL,
+                    status     TEXT NOT NULL DEFAULT 'pending',
+                    created    DOUBLE PRECISION NOT NULL,
+                    UNIQUE(sender, recipient)
+                )
             ''')
             # Migrate: add columns if they don't exist yet
             cur.execute("""
@@ -144,8 +150,58 @@ def get_history(user_a: str, user_b: str) -> list:
     return [{'id': r[0], 'sender': r[1], 'ciphertext': r[2], 'ts': r[3], 'status': r[4]} for r in rows]
 
 
-def get_pending_messages(username: str) -> list:
-    """Get undelivered messages for user (sent while offline)."""
+# ── Chat requests ─────────────────────────────────────────────────────────────
+
+def send_chat_request(sender: str, recipient: str) -> bool:
+    """Returns False if request already exists."""
+    try:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'INSERT INTO chat_requests (sender, recipient, created) VALUES (%s, %s, %s)',
+                    (sender, recipient, time.time())
+                )
+            conn.commit()
+        return True
+    except psycopg2.errors.UniqueViolation:
+        return False
+
+
+def get_chat_request(sender: str, recipient: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT id, status FROM chat_requests WHERE sender=%s AND recipient=%s',
+                (sender, recipient)
+            )
+            row = cur.fetchone()
+    return {'id': row[0], 'status': row[1]} if row else None
+
+
+def update_chat_request(sender: str, recipient: str, status: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'UPDATE chat_requests SET status=%s WHERE sender=%s AND recipient=%s',
+                (status, sender, recipient)
+            )
+        conn.commit()
+
+
+def are_contacts(user_a: str, user_b: str) -> bool:
+    """Check if users have accepted each other."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''SELECT 1 FROM chat_requests
+                   WHERE ((sender=%s AND recipient=%s) OR (sender=%s AND recipient=%s))
+                   AND status='accepted' LIMIT 1''',
+                (user_a, user_b, user_b, user_a)
+            )
+            return cur.fetchone() is not None
+
+
+def get_pending_messages(username: str) -> list:    """Get undelivered messages for user (sent while offline)."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
