@@ -190,7 +190,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#16212e;color:#e0e0e
       <input id="people-search" placeholder="Поиск по имени..." oninput="renderPeopleModal()"
         style="width:100%;padding:8px 12px;background:#16212e;border:1px solid #2a3a50;border-radius:8px;color:#e0e0e0;font-size:14px;outline:none">
     </div>
-    <div class="modal-body" id="people-list"></div>
+    <div class="modal-body" id="people-list" onclick="onPeopleListClick(event)"></div>
   </div>
 </div>
 
@@ -397,6 +397,20 @@ function openProfile() {
   alert(`👤 Профиль\n\nПользователь: ${username}\n\nНастройки аккаунта будут доступны в следующей версии.`);
 }
 
+function onPeopleListClick(e) {
+  const item = e.target.closest('.modal-user');
+  if (!item) return;
+  const peer = item.dataset.peer;
+  if (!peer) return;
+  const hasMessages = chats[peer] && Array.isArray(chats[peer]) && chats[peer].length > 0;
+  closePeopleModal();
+  if (hasMessages) {
+    openChat(peer);
+  } else {
+    showSendRequestModal(peer);
+  }
+}
+
 // ── People modal ──────────────────────────────────────────────────────────────
 function openPeopleModal() {
   document.getElementById('people-modal').classList.add('show');
@@ -442,6 +456,7 @@ function renderPeopleModal() {
 function _makeUserItem(peer, isOnline) {
   const div = document.createElement('div');
   div.className = 'modal-user';
+  div.dataset.peer = peer;
   div.innerHTML = `
     <div class="avatar">${escHtml(peer[0].toUpperCase())}${isOnline?'<div class="dot"></div>':''}
     </div>
@@ -449,18 +464,6 @@ function _makeUserItem(peer, isOnline) {
       <div class="uname">${escHtml(peer)}</div>
       <div class="ustatus">${isOnline?'В сети':'Не в сети'}</div>
     </div>`;
-  div.onclick = (e) => {
-    e.stopPropagation();
-    const hasMessages = chats[peer] && Array.isArray(chats[peer]) && chats[peer].length > 0;
-    console.log('click peer:', peer, 'hasMessages:', hasMessages);
-    if (hasMessages) {
-      closePeopleModal();
-      openChat(peer);
-    } else {
-      closePeopleModal();
-      showSendRequestModal(peer);
-    }
-  };
   return div;
 }
 
