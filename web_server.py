@@ -182,6 +182,12 @@ async def handle_conversations(request: web.Request):
     except Exception:
         return web.json_response({'error': 'Unauthorized'}, status=401)
     convs = database.get_conversations(username)
+    # Also include accepted contacts with no messages yet
+    contacts = database.get_accepted_contacts(username)
+    conv_peers = {c['peer'] for c in convs}
+    for peer in contacts:
+        if peer not in conv_peers:
+            convs.append({'peer': peer, 'last_ts': 0})
     online = list(clients.keys())
     return web.json_response({'conversations': convs, 'online': online})
 
@@ -300,13 +306,15 @@ async def handle_chat_request_respond(request: web.Request):
     if action == 'accept':
         _bot_message(username, f'✅ Вы приняли запрос от *{sender}*. Можете начать общение!')
         _bot_message(sender, f'✅ Пользователь *{username}* принял ваш запрос!')
+        # Notify both users to refresh contacts
         if sender in clients:
             await clients[sender].send_str(json.dumps({'type': 'request_accepted', 'by': username}))
-            # Also deliver bot message via WS
             payload = json.dumps({'bot': True, 'text': f'✅ Пользователь *{username}* принял ваш запрос!'})
             await clients[sender].send_str(json.dumps({
                 'type': 'message', 'from': 'SecureBot', 'data': payload
             }))
+        if username in clients:
+            await clients[username].send_str(json.dumps({'type': 'contact_added', 'peer': sender}))
     else:
         _bot_message(username, f'❌ Вы отклонили запрос от *{sender}*.')
         _bot_message(sender, f'❌ Пользователь *{username}* отклонил ваш запрос.')

@@ -657,8 +657,10 @@ function onPacket(pkt) {
   else if (pkt.type==='request_accepted') {
     loadConversations();
     addSys(`✅ ${pkt.by} принял ваш запрос`);
-    // Open chat with the user who accepted
     openChat(pkt.by);
+  }
+  else if (pkt.type==='contact_added') {
+    loadConversations();
   }
   else if (pkt.type==='request_declined') { addSys(`❌ ${pkt.by} отклонил ваш запрос`); }
   else if (pkt.type==='key_exchange') onKeyExchange(pkt);

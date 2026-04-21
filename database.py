@@ -211,6 +211,19 @@ def are_contacts(user_a: str, user_b: str) -> bool:
             return cur.fetchone() is not None
 
 
+def get_accepted_contacts(username: str) -> list:
+    """Return list of accepted contacts (even with no messages)."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''SELECT CASE WHEN sender=%s THEN recipient ELSE sender END as peer
+                   FROM chat_requests
+                   WHERE (sender=%s OR recipient=%s) AND status='accepted' ''',
+                (username, username, username)
+            )
+            return [r[0] for r in cur.fetchall()]
+
+
 def get_pending_messages(username: str) -> list:
     """Get undelivered messages for user (sent while offline)."""
     with _conn() as conn:
