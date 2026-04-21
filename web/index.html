@@ -614,6 +614,14 @@ function renderConversations(convs, online) {
     const peer = c.peer;
     const isOnline = online.includes(peer);
     const lastMsg = chats[peer]?.at(-1);
+    let previewText = '🔒 зашифровано';
+    if (lastMsg) {
+      if (lastMsg.sender === 'SecureBot') {
+        try { previewText = JSON.parse(lastMsg.text).text.replace(/\*/g,'').substring(0,30); } catch(e) { previewText = 'SecureBot'; }
+      } else {
+        previewText = lastMsg.text.substring(0,30);
+      }
+    }
     const item = document.createElement('div');
     item.className = 'list-item' + (peer===currentPeer?' active':'');
     item.onclick = () => openChat(peer);
@@ -622,7 +630,7 @@ function renderConversations(convs, online) {
       </div>
       <div class="item-info">
         <div class="item-name">${escHtml(peer)}</div>
-        <div class="item-sub">${lastMsg ? escHtml(lastMsg.text.substring(0,30)) : '🔒 зашифровано'}</div>
+        <div class="item-sub">${lastMsg ? escHtml(previewText) : '🔒 зашифровано'}</div>
       </div>
       ${(unread[peer]||0)>0?`<span class="item-badge">${unread[peer]}</span>`:''}
       <button class="del-btn" onclick="event.stopPropagation();deleteConversation('${escHtml(peer)}')" title="Удалить чат">🗑</button>`;
@@ -713,12 +721,18 @@ async function loadHistory(peer) {
   try {
     const r = await fetch(`https://${serverHost}/history/${encodeURIComponent(peer)}?token=${encodeURIComponent(authToken)}`);
     const data = await r.json();
-    // History is encrypted — we can only show it after key exchange
-    // Store raw for later decryption when key arrives
     if (!chats[peer]) chats[peer] = [];
-    chats[peer]._pending = data.messages || [];
-    // If key already known — decrypt now
-    if (peerPubKeys[peer]) decryptPending(peer);
+    const msgs = data.messages || [];
+    if (peer === 'SecureBot') {
+      // Bot messages don't need decryption
+      msgs.forEach(m => {
+        chats[peer].push({sender: m.sender, text: m.ciphertext, ts: m.ts});
+        _addBubble(m.sender, m.ciphertext, m.ts);
+      });
+    } else {
+      chats[peer]._pending = msgs;
+      if (peerPubKeys[peer]) decryptPending(peer);
+    }
   } catch(e) {}
 }
 
