@@ -11,12 +11,16 @@ Web relay server — secure by design:
   - Message status: sent / delivered / read
 """
 
-import asyncio, json, logging, pathlib, os, time, secrets
+import asyncio, json, logging, pathlib, os, time, secrets, uuid
 import database
 import bcrypt
 import jwt
 import aiohttp
 from aiohttp import web
+
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+SUPABASE_BUCKET = 'messenger-files'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [WEB] %(message)s')
 
@@ -225,6 +229,41 @@ async def handle_fcm_token(request: web.Request):
     if fcm_token:
         database.save_fcm_token(username, fcm_token)
     return web.json_response({'ok': True})
+
+
+async def handle_upload(request: web.Request):
+    """Upload file to Supabase Storage, return public URL."""
+    try:
+        username = _verify_token(request.rel_url.query.get('token', ''))
+    except Exception:
+        return web.json_response({'error': 'Unauthorized'}, status=401)
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return web.json_response({'error': 'Storage not configured'}, status=503)
+    reader = await request.multipart()
+    field = await reader.next()
+    if not field:
+        return web.json_response({'error': 'No file'}, status=400)
+    filename = field.filename or 'file'
+    ext = pathlib.Path(filename).suffix.lower()
+    unique_name = f"{username}/{uuid.uuid4().hex}{ext}"
+    data = await field.read()
+    content_type = field.headers.get('Content-Type', 'application/octet-stream')
+    upload_url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{unique_name}"
+    async with aiohttp.ClientSession() as session:
+        resp = await session.post(
+            upload_url, data=data,
+            headers={
+                'Authorization': f'Bearer {SUPABASE_KEY}',
+                'Content-Type': content_type,
+                'x-upsert': 'true',
+            }
+        )
+        if resp.status not in (200, 201):
+            text = await resp.text()
+            logging.error(f'Supabase upload error: {text}')
+            return web.json_response({'error': 'Upload failed'}, status=500)
+    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{unique_name}"
+    return web.json_response({'url': public_url, 'name': filename, 'type': content_type})
 
 
 async def handle_admin_reset(request: web.Request):
@@ -446,6 +485,7 @@ app.router.add_get('/history/{peer}',         handle_history)
 app.router.add_delete('/conversation/{peer}', handle_delete_conversation)
 app.router.add_get('/pubkey/{username}',       handle_get_pubkey)
 app.router.add_get('/admin/reset',             handle_admin_reset)
+app.router.add_post('/upload',                 handle_upload)
 app.router.add_post('/fcm_token',             handle_fcm_token)
 app.router.add_post('/chat_request',          handle_chat_request)
 app.router.add_post('/chat_request/respond',  handle_chat_request_respond)
