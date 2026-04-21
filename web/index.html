@@ -443,9 +443,9 @@ function _makeUserItem(peer, isOnline) {
     </div>`;
   div.onclick = () => {
     closePeopleModal();
-    // If already have conversation — open chat directly
-    const hasChat = chats[peer] || Object.keys(chats).includes(peer);
-    if (hasChat) {
+    // Only open chat directly if there are actual messages
+    const hasMessages = chats[peer] && Array.isArray(chats[peer]) && chats[peer].length > 0;
+    if (hasMessages) {
       openChat(peer);
     } else {
       showSendRequestModal(peer);
