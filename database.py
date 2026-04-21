@@ -189,13 +189,23 @@ def update_chat_request(sender: str, recipient: str, status: str):
 
 
 def are_contacts(user_a: str, user_b: str) -> bool:
-    """Check if users have accepted each other."""
+    """Check if users have accepted each other or have existing messages."""
     with _conn() as conn:
         with conn.cursor() as cur:
+            # Check accepted request
             cur.execute(
                 '''SELECT 1 FROM chat_requests
                    WHERE ((sender=%s AND recipient=%s) OR (sender=%s AND recipient=%s))
                    AND status='accepted' LIMIT 1''',
+                (user_a, user_b, user_b, user_a)
+            )
+            if cur.fetchone():
+                return True
+            # Also consider contacts if they have existing messages (legacy)
+            cur.execute(
+                '''SELECT 1 FROM messages
+                   WHERE (sender=%s AND recipient=%s) OR (sender=%s AND recipient=%s)
+                   LIMIT 1''',
                 (user_a, user_b, user_b, user_a)
             )
             return cur.fetchone() is not None

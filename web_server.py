@@ -264,9 +264,11 @@ async def handle_chat_request(request: web.Request):
         database.update_chat_request(sender, recipient, 'pending')
     _bot_message(recipient,
         f'👤 Пользователь *{sender}* хочет начать с вами переписку. Принять запрос?')
+    # Deliver bot message via WS if recipient is online
     if recipient in clients:
+        payload = json.dumps({'bot': True, 'text': f'👤 Пользователь *{sender}* хочет начать с вами переписку. Принять запрос?'})
         await clients[recipient].send_str(json.dumps({
-            'type': 'chat_request', 'from': sender,
+            'type': 'message', 'from': 'SecureBot', 'data': payload
         }))
     return web.json_response({'status': 'sent'})
 
