@@ -338,7 +338,7 @@ async function doRegister() {
     });
     const data = await r.json();
     if (!r.ok) { document.getElementById('auth-error').textContent = data.error||'Ошибка'; return; }
-    authToken = data.token; username = f.user; serverHost = f.server;
+    authToken = data.token; username = f.user; serverHost = f.server.split('?')[0];
     initCrypto(); openApp();
   } catch(e) { document.getElementById('auth-error').textContent='Ошибка соединения'; }
 }
@@ -353,7 +353,7 @@ async function doLogin() {
     });
     const data = await r.json();
     if (!r.ok) { document.getElementById('auth-error').textContent = data.error||'Неверные данные'; return; }
-    authToken = data.token; username = f.user; serverHost = f.server;
+    authToken = data.token; username = f.user; serverHost = f.server.split('?')[0];
     initCrypto(); openApp();
   } catch(e) { document.getElementById('auth-error').textContent='Ошибка соединения'; }
 }
@@ -869,7 +869,7 @@ function escHtml(s) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('inp-server').value = location.host;
+  document.getElementById('inp-server').value = location.host.split('?')[0];
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/web/sw.js');
   const ta = document.getElementById('msg-input');
   ta.addEventListener('input', ()=>{ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; });
